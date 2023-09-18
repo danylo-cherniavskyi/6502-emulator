@@ -3,6 +3,7 @@ use std::default;
 type Byte = u8;
 type Word = u16;
 
+#[derive(Debug)]
 pub struct CPU {
     pc: Word,
     sp: Byte,
@@ -39,15 +40,15 @@ impl CPU {
         return (self.status & 0x1) != 0;
     }
 
-    pub fn set_carry(&self, value: bool) {
-        todo!()
+    pub fn set_carry(&mut self, value: bool) {
+        todo!();
     }
 
     pub fn get_zero(&self) -> bool {
         return (self.status & 0x2) != 0;
     }
 
-    pub fn set_zero(&self, value: bool) {
+    pub fn set_zero(&mut self, value: bool) {
         todo!();
     }
 
@@ -55,7 +56,7 @@ impl CPU {
         todo!();
     }
 
-    pub fn set_interrupt_disable(&self, value: bool) {
+    pub fn set_interrupt_disable(&mut self, value: bool) {
         todo!();
     }
 
@@ -63,7 +64,7 @@ impl CPU {
         todo!();
     }
 
-    pub fn set_decimal_mode(&self, value: bool) {
+    pub fn set_decimal_mode(&mut self, value: bool) {
         todo!();
     }
 
@@ -71,7 +72,7 @@ impl CPU {
         todo!();
     }
 
-    pub fn set_break_command(&self, value: bool) {
+    pub fn set_break_command(&mut self, value: bool) {
         todo!();
     }
 
@@ -79,7 +80,7 @@ impl CPU {
         todo!();
     }
 
-    pub fn set_overflow(&self, value: bool) {
+    pub fn set_overflow(&mut self, value: bool) {
         todo!();
     }
 
@@ -87,7 +88,7 @@ impl CPU {
         todo!();
     }
 
-    pub fn set_negative(&self, value: bool) {
+    pub fn set_negative(&mut self, value: bool) {
         todo!();
     }
 }
@@ -112,72 +113,86 @@ mod tests {
 
     #[test]
     fn test_flag_carry() {
-        let cpu = CPU {..Default::default()};
+        let mut cpu = CPU {..Default::default()};
 
         cpu.set_carry(false);
         assert_eq!(cpu.get_carry(), false);
         cpu.set_carry(true);
         assert_eq!(cpu.get_carry(), true);
+        cpu.set_carry(false);
+        assert_eq!(cpu.get_carry(), false);
     }
 
     #[test]
     fn test_flag_zero() {
-        let cpu = CPU {..Default::default()};
+        let mut cpu = CPU {..Default::default()};
 
         cpu.set_zero(false);
         assert_eq!(cpu.get_zero(), false);
         cpu.set_zero(true);
         assert_eq!(cpu.get_zero(), true);
+        cpu.set_zero(false);
+        assert_eq!(cpu.get_zero(), false);
     }
 
     #[test]
     fn test_flag_interrupt_disable() {
-        let cpu = CPU {..Default::default()};
+        let mut cpu = CPU {..Default::default()};
         
         cpu.set_interrupt_disable(false);
         assert_eq!(cpu.get_interrupt_disable(), false);
         cpu.set_interrupt_disable(true);
         assert_eq!(cpu.get_interrupt_disable(), true);
+        cpu.set_interrupt_disable(false);
+        assert_eq!(cpu.get_interrupt_disable(), false);
     }
 
     #[test]
     fn test_flag_decimal_mode() {
-        let cpu = CPU {..Default::default()};
+        let mut cpu = CPU {..Default::default()};
 
         cpu.set_decimal_mode(false);
         assert_eq!(cpu.get_decimal_mode(), false);
         cpu.set_decimal_mode(true);
         assert_eq!(cpu.get_decimal_mode(), true);
+        cpu.set_decimal_mode(false);
+        assert_eq!(cpu.get_decimal_mode(), false);
     }
 
     #[test]
     fn test_flag_break_command() {
-        let cpu = CPU {..Default::default()};
+        let mut cpu = CPU {..Default::default()};
 
         cpu.set_break_command(false);
         assert_eq!(cpu.get_break_command(), false);
         cpu.set_break_command(true);
         assert_eq!(cpu.get_break_command(), true);
+        cpu.set_break_command(false);
+        assert_eq!(cpu.get_break_command(), false);
     }
 
     #[test]
     fn test_flag_overflow() {
-        let cpu = CPU {..Default::default()};
+        let mut cpu = CPU {..Default::default()};
 
         cpu.set_overflow(false);
         assert_eq!(cpu.get_overflow(), false);
         cpu.set_overflow(true);
         assert_eq!(cpu.get_overflow(), true);
+        cpu.set_overflow(false);
+        assert_eq!(cpu.get_overflow(), false);
     }
 
     #[test]
     fn test_flag_negative() {
-        let cpu = CPU {..Default::default()};
+        let mut cpu = CPU {..Default::default()};
 
         cpu.set_negative(false);
         assert_eq!(cpu.get_negative(), false);
         cpu.set_negative(true);
         assert_eq!(cpu.get_negative(), true);
+        cpu.set_negative(false);
+        assert_eq!(cpu.get_negative(), false);
     }
 }
 
