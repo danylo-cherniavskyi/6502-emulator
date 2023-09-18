@@ -37,59 +37,66 @@ impl CPU {
     }
 
     pub fn get_carry(&self) -> bool {
-        return (self.status & 0x1) != 0;
+        return (self.status & (1 << 0)) != 0;
     }
 
     pub fn set_carry(&mut self, value: bool) {
-        todo!();
+        let value_bin = (value as u8) << 0;
+        self.status = (self.status | value_bin) & value_bin;
     }
 
     pub fn get_zero(&self) -> bool {
-        return (self.status & 0x2) != 0;
+        return (self.status & (1 << 1)) != 0;
     }
 
     pub fn set_zero(&mut self, value: bool) {
-        todo!();
+        let value_bin = (value as u8) << 1;
+        self.status = (self.status | value_bin) & value_bin;
     }
 
     pub fn get_interrupt_disable(&self) -> bool {
-        todo!();
+        return (self.status & (1 << 2)) != 0;
     }
 
     pub fn set_interrupt_disable(&mut self, value: bool) {
-        todo!();
+        let value_bin = (value as u8) << 2;
+        self.status = (self.status | value_bin) & value_bin;
     }
 
     pub fn get_decimal_mode(&self) -> bool {
-        todo!();
+        return (self.status & (1 << 3)) != 0;
     }
 
     pub fn set_decimal_mode(&mut self, value: bool) {
-        todo!();
+        let value_bin = (value as u8) << 3;
+        self.status = (self.status | value_bin) & value_bin;
     }
 
     pub fn get_break_command(&self) -> bool {
-        todo!();
+        return (self.status & (1 << 4)) != 0;
     }
 
     pub fn set_break_command(&mut self, value: bool) {
-        todo!();
+        let value_bin = (value as u8) << 4;
+        self.status = (self.status | value_bin) & value_bin;
     }
 
     pub fn get_overflow(&self) -> bool {
-        todo!();
+        return (self.status & (1 << 5)) != 0;
     }
 
     pub fn set_overflow(&mut self, value: bool) {
-        todo!();
+        let value_bin = (value as u8) << 5;
+        self.status = (self.status | value_bin) & value_bin;
     }
 
     pub fn get_negative(&self) -> bool {
-        todo!();
+        return (self.status & (1 << 6)) != 0;
     }
 
     pub fn set_negative(&mut self, value: bool) {
-        todo!();
+        let value_bin = (value as u8) << 6;
+        self.status = (self.status | value_bin) & value_bin;
     }
 }
 
