@@ -14,6 +14,15 @@ impl Memory {
         return ((self.ram[(addr + 1) as usize] as u16) << 8) | 
                  self.ram[ addr      as usize] as u16;
     }
+
+    fn write_byte(&mut self, addr: Word, value: Byte) {
+        self.ram[addr as usize] = value;
+    }
+
+    fn write_word(&mut self, addr: Word, value: Word) {
+        self.write_byte(addr + 0, (value & 0x00ff) as u8);
+        self.write_byte(addr + 1, ((value & 0xff00) >> 8) as u8)
+    }
 }
 
 impl Default for Memory {
@@ -186,7 +195,7 @@ impl CPU {
     }
 
     pub fn fetch_instruction(&mut self, m: &Memory) -> Instruction {
-        let instruction = m.ram[self.pc as usize];
+        let instruction = m.read_byte(self.pc);
         self.pc += 1;
         self.cycles += 1;
 
@@ -354,7 +363,7 @@ mod tests {
         let mut cpu = CPU {..Default::default()};
         let cpu_copy = cpu.clone();
         let mut memory = Memory {ram: [0u8; 0xffff]};
-        memory.ram[0x0000] = Instruction::LDA_IM.into();
+        memory.write_byte(0x0000, Instruction::LDA_IM.into());
 
         let instruction = cpu.fetch_instruction(&mut memory);
 
@@ -372,8 +381,8 @@ mod tests {
         let values = [0u8, 69, (!10u8 + 1)];
 
         for i in 0..3 {
-            mem.ram[i*2    ] = Instruction::LDA_IM.into();
-            mem.ram[i*2 + 1] = values[i];
+            mem.write_byte(i*2    , Instruction::LDA_IM.into());
+            mem.write_byte(i*2 + 1, values[i as usize]);
         }
 
         for value in values {
@@ -407,9 +416,9 @@ mod tests {
         let addresses = [0x13, 0x5A, 0xff];
 
         for i in 0..3 {
-            mem.ram[2*i + 0] = Instruction::LDA_ZP.into();
-            mem.ram[2*i + 1] = addresses[i];
-            mem.ram[addresses[i] as usize] = values[i];
+            mem.write_byte(2*i + 0, Instruction::LDA_ZP.into());
+            mem.write_byte(2*i + 1, addresses[i as usize]);
+            mem.write_byte(addresses[i as usize] as u16, values[i as usize]);
         }
 
         for value in values {
@@ -446,9 +455,9 @@ mod tests {
         let addresses_actual = [0x89, 0x23, 0x0f];
 
         for i in 0..3 {
-            m.ram[2*i + 0] = Instruction::LDA_ZP_X.into();
-            m.ram[2*i + 1] = addresses[i];
-            m.ram[addresses_actual[i] as usize] = values[i];
+            m.write_byte(2*i + 0, Instruction::LDA_ZP_X.into());
+            m.write_byte(2*i + 1, addresses[i as usize]);
+            m.write_byte(addresses_actual[i as usize], values[i as usize]);
         }
 
         for i in 0..3 {
