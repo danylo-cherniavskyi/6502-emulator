@@ -1,13 +1,6 @@
 type Byte = u8;
 type Word = u16;
 
-#[allow(non_camel_case_types)]
-#[repr(u8)]
-pub enum Instruction {
-    LDA_IM,
-    INVALID
-}
-
 pub struct Memory {
     ram: [Byte; 0xffff]
 }
@@ -23,10 +16,37 @@ impl Memory {
     }
 }
 
+impl Default for Memory {
+    fn default() -> Self {
+        Memory { ram: [0u8; 0xffff] }
+    }
+}
+
+#[allow(non_camel_case_types)]
+#[repr(u8)]
+pub enum Instruction {
+    LDA_IM,
+    LDA_ZP,
+    LDA_ZP_X,
+    LDA_ABS,
+    LDA_ABS_X,
+    LDA_ABS_Y,
+    LDA_IN_X,
+    LDA_IN_Y,
+    INVALID
+}
+
 impl From<u8> for Instruction {
     fn from(a: u8) -> Self {
         match a {
             0xA9 => Instruction::LDA_IM,
+            0xA5 => Instruction::LDA_ZP,
+            0xB5 => Instruction::LDA_ZP_X,
+            0xAD => Instruction::LDA_ABS,
+            0xBD => Instruction::LDA_ABS_X,
+            0xB9 => Instruction::LDA_ABS_Y,
+            0xA1 => Instruction::LDA_IN_X,
+            0xB1 => Instruction::LDA_IN_Y,
             _    => Instruction::INVALID,
         }
     }
@@ -36,7 +56,14 @@ impl From<Instruction> for u8 {
     fn from(a: Instruction) -> Self {
         match a {
             Instruction::LDA_IM => 0xA9,
-            Instruction::INVALID => 0xFF,
+            Instruction::LDA_ZP => 0xA5,
+            Instruction::LDA_ZP_X => 0xB5,
+            Instruction::LDA_ABS => 0xAD,
+            Instruction::LDA_ABS_X => 0xBD,
+            Instruction::LDA_ABS_Y => 0xB9,
+            Instruction::LDA_IN_X => 0xA1,
+            Instruction::LDA_IN_Y => 0xB1,
+            Instruction::INVALID => 0xFF
         }
     }
 }
@@ -147,6 +174,13 @@ impl CPU {
     pub fn execute(&mut self, m: &mut Memory, i: Instruction) {
         match i {
             Instruction::LDA_IM => self.lda_immediate(m),
+            Instruction::LDA_ZP => self.lda_zero_page(m),
+            Instruction::LDA_ZP_X => self.lda_zero_page_x(m),
+            Instruction::LDA_ABS => self.lda_absolute(m),
+            Instruction::LDA_ABS_X => self.lda_absolute_x(m),
+            Instruction::LDA_ABS_Y => self.lda_absolute_y(m),
+            Instruction::LDA_IN_X => self.lda_indirect_x(m),
+            Instruction::LDA_IN_Y => self.lda_indirect_y(m),
             Instruction::INVALID => println!("Error: Invalid instruction"),
         }
     }
@@ -154,6 +188,7 @@ impl CPU {
     pub fn fetch_instruction(&mut self, m: &Memory) -> Instruction {
         let instruction = m.ram[self.pc as usize];
         self.pc += 1;
+        self.cycles += 1;
 
         return Instruction::from(instruction);
     }
@@ -168,6 +203,39 @@ impl CPU {
         self.set_negative((value & 0b1000_0000) != 0);
 
         self.pc += 1;
+        self.cycles += 1;
+    }
+
+    fn lda_zero_page(&mut self, m: &mut Memory) {
+        todo!();
+    }
+
+    fn lda_zero_page_x(&mut self, m: &mut Memory) {
+        todo!();
+    }
+
+    fn lda_zero_page_y(&mut self, m: &mut Memory) {
+        todo!();
+    }
+
+    fn lda_absolute(&mut self, m: &mut Memory) {
+        todo!();
+    }
+
+    fn lda_absolute_x(&mut self, m: &mut Memory) {
+        todo!();
+    }
+
+    fn lda_absolute_y(&mut self, m: &mut Memory) {
+        todo!();
+    }
+
+    fn lda_indirect_x(&mut self, m: &mut Memory) {
+        todo!();
+    }
+
+    fn lda_indirect_y(&mut self, m: &mut Memory) {
+        todo!();
     }
 }
 
@@ -302,11 +370,13 @@ mod tests {
 
         for value in values {
             let pc = cpu.pc;
+            let cycles = cpu.cycles;
             let instruction = cpu.fetch_instruction(&mem);
             cpu.execute(&mut mem, instruction);
 
             assert_eq!(cpu.a, value);
             assert_eq!(cpu.pc, pc + 2);
+            assert_eq!(cpu.cycles, cycles + 2);
             assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
             assert_eq!(cpu.get_zero(), value == 0);
             assert_eq!(cpu.get_interrupt_disable(), cpu_copy.get_interrupt_disable());
@@ -315,6 +385,72 @@ mod tests {
             assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
             assert_eq!(cpu.get_negative(), (value as i8) < 0);
         }
+    }
+
+    #[test]
+    fn test_lda_zero_page() {
+        let mut cpu = CPU {..Default::default()};
+        let cpu_copy = cpu.clone();
+        let mut mem = Memory {..Default::default()};
+
+        cpu.reset();
+
+        let values = [0u8, 13, (!105u8 + 1)];
+        let addresses = [0x13, 0x5A, 0xff];
+
+        for i in 0..3 {
+            mem.ram[2*i + 0] = Instruction::LDA_ZP.into();
+            mem.ram[2*i + 1] = addresses[i];
+            mem.ram[addresses[i] as usize] = values[i];
+        }
+
+        for value in values {
+            let pc = cpu.pc;
+            let cycles = cpu.cycles;
+            let instruction = cpu.fetch_instruction(&mem);
+            cpu.execute(&mut mem, instruction);
+
+            assert_eq!(cpu.a, value);
+            assert_eq!(cpu.pc, pc + 3);
+            assert_eq!(cpu.cycles, cycles + 3);
+            assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
+            assert_eq!(cpu.get_zero(), value == 0);
+            assert_eq!(cpu.get_interrupt_disable(), cpu_copy.get_interrupt_disable());
+            assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+            assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
+            assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
+            assert_eq!(cpu.get_negative(), (value as i8) < 0);
+        }
+    }
+
+    #[test]
+    fn test_lda_zero_page_x() {
+        todo!();
+    }
+
+    #[test]
+    fn test_lda_absolute() {
+        todo!()
+    }
+
+    #[test]
+    fn test_lda_absolute_x() {
+        todo!()
+    }
+
+    #[test]
+    fn test_lda_absolute_y() {
+        todo!()
+    }
+
+    #[test]
+    fn test_lda_indirect_x() {
+        todo!()
+    }
+
+    #[test]
+    fn test_lda_indirect_y() {
+        todo!()
     }
 }
 
