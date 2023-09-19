@@ -1,10 +1,49 @@
-use std::default;
-
 type Byte = u8;
 type Word = u16;
 
-#[derive(Debug)]
+#[allow(non_camel_case_types)]
+#[repr(u8)]
+pub enum Instruction {
+    LDA_IM,
+    INVALID
+}
+
+pub struct Memory {
+    ram: [Byte; 0xffff]
+}
+
+impl Memory {
+    fn read_byte(&self, addr: Word) -> Byte {
+        return self.ram[addr as usize];
+    }
+
+    fn read_word(&self, addr: Word) -> Word {
+        return ((self.ram[(addr + 1) as usize] as u16) << 8) | 
+                 self.ram[ addr      as usize] as u16;
+    }
+}
+
+impl From<u8> for Instruction {
+    fn from(a: u8) -> Self {
+        match a {
+            0xA9 => Instruction::LDA_IM,
+            _    => Instruction::INVALID,
+        }
+    }
+}
+
+impl From<Instruction> for u8 {
+    fn from(a: Instruction) -> Self {
+        match a {
+            Instruction::LDA_IM => 0xA9,
+            Instruction::INVALID => 0xFF,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct CPU {
+    cycles: u64,
     pc: Word,
     sp: Byte,
     a: Byte,
@@ -16,6 +55,7 @@ pub struct CPU {
 impl Default for CPU {
     fn default() -> Self {
         CPU {
+            cycles: 0,
             pc: 0,
             sp: 0,
             a: 0,
@@ -28,6 +68,7 @@ impl Default for CPU {
 
 impl CPU {
     pub fn reset(&mut self) {
+        self.cycles = 0;
         self.pc = 0;
         self.sp = 0;
         self.a = 0;
@@ -36,13 +77,17 @@ impl CPU {
         self.status = 0;
     }
 
+    pub fn get_status(&self) -> Byte {
+        return self.status
+    }
+
     pub fn get_carry(&self) -> bool {
         return (self.status & (1 << 0)) != 0;
     }
 
     pub fn set_carry(&mut self, value: bool) {
         let value_bin = (value as u8) << 0;
-        self.status = (self.status | value_bin) & value_bin;
+        self.status = (self.status & !(1 << 0)) | value_bin;
     }
 
     pub fn get_zero(&self) -> bool {
@@ -51,7 +96,7 @@ impl CPU {
 
     pub fn set_zero(&mut self, value: bool) {
         let value_bin = (value as u8) << 1;
-        self.status = (self.status | value_bin) & value_bin;
+        self.status = (self.status & !(1 << 1)) | value_bin;
     }
 
     pub fn get_interrupt_disable(&self) -> bool {
@@ -60,7 +105,7 @@ impl CPU {
 
     pub fn set_interrupt_disable(&mut self, value: bool) {
         let value_bin = (value as u8) << 2;
-        self.status = (self.status | value_bin) & value_bin;
+        self.status = (self.status & !(1 << 2)) | value_bin;
     }
 
     pub fn get_decimal_mode(&self) -> bool {
@@ -69,7 +114,7 @@ impl CPU {
 
     pub fn set_decimal_mode(&mut self, value: bool) {
         let value_bin = (value as u8) << 3;
-        self.status = (self.status | value_bin) & value_bin;
+        self.status = (self.status & !(1 << 3)) | value_bin;
     }
 
     pub fn get_break_command(&self) -> bool {
@@ -78,7 +123,7 @@ impl CPU {
 
     pub fn set_break_command(&mut self, value: bool) {
         let value_bin = (value as u8) << 4;
-        self.status = (self.status | value_bin) & value_bin;
+        self.status = (self.status & !(1 << 4)) | value_bin;
     }
 
     pub fn get_overflow(&self) -> bool {
@@ -87,7 +132,7 @@ impl CPU {
 
     pub fn set_overflow(&mut self, value: bool) {
         let value_bin = (value as u8) << 5;
-        self.status = (self.status | value_bin) & value_bin;
+        self.status = (self.status & !(1 << 5)) | value_bin;
     }
 
     pub fn get_negative(&self) -> bool {
@@ -96,7 +141,33 @@ impl CPU {
 
     pub fn set_negative(&mut self, value: bool) {
         let value_bin = (value as u8) << 6;
-        self.status = (self.status | value_bin) & value_bin;
+        self.status = (self.status & !(1 << 6)) | value_bin;
+    }
+
+    pub fn execute(&mut self, m: &mut Memory, i: Instruction) {
+        match i {
+            Instruction::LDA_IM => self.lda_immediate(m),
+            Instruction::INVALID => println!("Error: Invalid instruction"),
+        }
+    }
+
+    pub fn fetch_instruction(&mut self, m: &Memory) -> Instruction {
+        let instruction = m.ram[self.pc as usize];
+        self.pc += 1;
+
+        return Instruction::from(instruction);
+    }
+}
+
+impl CPU {
+    fn lda_immediate(&mut self, m: &mut Memory) {
+        let value = m.read_byte(self.pc);
+        self.a = value;
+
+        self.set_zero(value == 0);
+        self.set_negative((value & 0b1000_0000) != 0);
+
+        self.pc += 1;
     }
 }
 
@@ -201,10 +272,57 @@ mod tests {
         cpu.set_negative(false);
         assert_eq!(cpu.get_negative(), false);
     }
+
+    #[test]
+    fn test_fetch_instruction() {
+        let mut cpu = CPU {..Default::default()};
+        let cpu_copy = cpu.clone();
+        let mut memory = Memory {ram: [0u8; 0xffff]};
+        memory.ram[0x0000] = Instruction::LDA_IM.into();
+
+        let instruction = cpu.fetch_instruction(&mut memory);
+
+        assert_eq!(cpu.pc, cpu_copy.pc + 1);
+        assert_eq!(<Instruction as Into<u8>>::into(instruction), Instruction::LDA_IM.into());
+    }
+
+    #[test]
+    fn test_lda_immediate() {
+        let mut cpu = CPU {..Default::default()};
+        let cpu_copy = cpu.clone();
+        let mut mem = Memory { ram: [0u8; 0xffff]};
+        cpu.reset();
+
+        let values = [0u8, 69, (!10u8 + 1)];
+
+        for i in 0..3 {
+            mem.ram[i*2    ] = Instruction::LDA_IM.into();
+            mem.ram[i*2 + 1] = values[i];
+        }
+
+        for value in values {
+            let pc = cpu.pc;
+            let instruction = cpu.fetch_instruction(&mem);
+            cpu.execute(&mut mem, instruction);
+
+            assert_eq!(cpu.a, value);
+            assert_eq!(cpu.pc, pc + 2);
+            assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
+            assert_eq!(cpu.get_zero(), value == 0);
+            assert_eq!(cpu.get_interrupt_disable(), cpu_copy.get_interrupt_disable());
+            assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+            assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
+            assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
+            assert_eq!(cpu.get_negative(), (value as i8) < 0);
+        }
+    }
 }
 
 fn main() {
     let mut cpu = CPU {..Default::default()};
+    let mut memory = Memory { ram: [0u8; 0xffff] };
 
     cpu.reset();
+
+    cpu.execute(&mut memory, Instruction::LDA_IM);
 }
