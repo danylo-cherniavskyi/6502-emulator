@@ -6,20 +6,20 @@ pub struct Memory {
 }
 
 impl Memory {
-    fn read_byte(&self, addr: Word) -> Byte {
+    pub fn read_byte(&self, addr: Word) -> Byte {
         return self.ram[addr as usize];
     }
 
-    fn read_word(&self, addr: Word) -> Word {
+    pub fn read_word(&self, addr: Word) -> Word {
         return ((self.ram[(addr + 1) as usize] as u16) << 8) | 
                  self.ram[ addr      as usize] as u16;
     }
 
-    fn write_byte(&mut self, addr: Word, value: Byte) {
+    pub fn write_byte(&mut self, addr: Word, value: Byte) {
         self.ram[addr as usize] = value;
     }
 
-    fn write_word(&mut self, addr: Word, value: Word) {
+    pub fn write_word(&mut self, addr: Word, value: Word) {
         self.write_byte(addr + 0, (value & 0x00ff) as u8);
         self.write_byte(addr + 1, ((value & 0xff00) >> 8) as u8)
     }
@@ -228,10 +228,6 @@ impl CPU {
     }
 
     fn lda_zero_page_x(&mut self, m: &mut Memory) {
-        todo!();
-    }
-
-    fn lda_zero_page_y(&mut self, m: &mut Memory) {
         todo!();
     }
 
@@ -485,7 +481,40 @@ mod tests {
 
     #[test]
     fn test_lda_absolute() {
-        todo!()
+        let mut cpu = CPU {..Default::default()};
+        let cpu_copy = cpu.clone();
+        let mut m = Memory {..Default::default()};
+
+        cpu.reset();
+
+        let values = [0u8, 45, (!105u8 + 1)];
+        let addresses = [0x1234u16, 0x4321, 0xfff0];
+
+        for i in 0..3 {
+            m.write_byte(3*i + 0, Instruction::LDA_ABS.into());
+            m.write_word(3*i + 1, addresses[i as usize]);
+            m.write_byte(addresses[i as usize], values[i as usize]);
+        }
+
+        for value in values {
+            let pc = cpu.pc;
+            let cycles = cpu.cycles;
+            let instruction = cpu.fetch_instruction(&m);
+
+            cpu.execute(&mut m, instruction);
+
+            assert_eq!(cpu.a, value);
+            assert_eq!(cpu.pc, pc + 3);
+            assert_eq!(cpu.cycles, cycles + 4);
+            assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
+            assert_eq!(cpu.get_zero(), value == 0);
+            assert_eq!(cpu.get_interrupt_disable(), cpu_copy.get_interrupt_disable());
+            assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+            assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
+            assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
+            assert_eq!(cpu.get_negative(), (value as i8) < 0);
+        }
+        
     }
 
     #[test]
