@@ -207,7 +207,15 @@ impl CPU {
     }
 
     fn lda_zero_page(&mut self, m: &mut Memory) {
-        todo!();
+        let address = m.read_byte(self.pc);
+        let value = m.read_byte(address as u16);
+        self.a = value;
+
+        self.set_zero(value == 0);
+        self.set_negative((value & 0b1000_0000) != 0);
+
+        self.pc += 1;
+        self.cycles += 2;
     }
 
     fn lda_zero_page_x(&mut self, m: &mut Memory) {
@@ -411,7 +419,7 @@ mod tests {
             cpu.execute(&mut mem, instruction);
 
             assert_eq!(cpu.a, value);
-            assert_eq!(cpu.pc, pc + 3);
+            assert_eq!(cpu.pc, pc + 2);
             assert_eq!(cpu.cycles, cycles + 3);
             assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
             assert_eq!(cpu.get_zero(), value == 0);
