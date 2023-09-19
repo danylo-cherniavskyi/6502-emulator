@@ -519,7 +519,47 @@ mod tests {
 
     #[test]
     fn test_lda_absolute_x() {
-        todo!()
+        let mut cpu = CPU {..Default::default()};
+        let cpu_copy = cpu.clone();
+        let mut m = Memory {..Default::default()};
+
+        cpu.reset();
+
+        let values = [0u8, 45, (!105u8 + 1)];
+        let addresses = [0x1234u16, 0x0010, 0xfff0];
+        let x_addresses = [0xff, 0xAB, 0x00];
+        let addresses_actual = [0x1333u16, 0x00BB, 0xfff0];
+        let additional_cycles = [1, 0, 1];
+
+        for i in 0..3 {
+            m.write_byte(3*i + 0, Instruction::LDA_ABS_X.into());
+            m.write_word(3*i + 1, addresses[i as usize]);
+            m.write_byte(addresses_actual[i as usize], values[i as usize])
+        }
+
+        for i in 0..3 {
+            let pc = cpu.pc;
+            let cycles = cpu.cycles;
+            let value = values[i];
+            cpu.x = x_addresses[i];
+            let instruction = cpu.fetch_instruction(&m);
+
+            cpu.execute(&mut m, instruction);
+
+            assert_eq!(cpu.a, value);
+            assert_eq!(cpu.x, x_addresses[i]);
+            assert_eq!(cpu.pc, pc + 3);
+            assert_eq!(cpu.cycles, cycles + 4 + additional_cycles[i]);
+            assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
+            assert_eq!(cpu.get_zero(), value == 0);
+            assert_eq!(cpu.get_interrupt_disable(), cpu_copy.get_interrupt_disable());
+            assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+            assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
+            assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
+            assert_eq!(cpu.get_negative(), (value as i8) < 0);
+        }
+
+
     }
 
     #[test]
