@@ -433,7 +433,45 @@ mod tests {
 
     #[test]
     fn test_lda_zero_page_x() {
-        todo!();
+        let mut cpu = CPU {..Default::default()};
+        let cpu_copy = cpu.clone();
+        let mut m = Memory {..Default::default()};
+
+        cpu.reset();
+
+        let values = [0u8, 45, (!105u8 + 1)];
+        let addresses = [0x32u8, 0xBF, 0xFF];
+        let x_values = [0x57u8, 0x64, 0x10];
+
+        let addresses_actual = [0x89, 0x23, 0x0f];
+
+        for i in 0..3 {
+            m.ram[2*i + 0] = Instruction::LDA_ZP_X.into();
+            m.ram[2*i + 1] = addresses[i];
+            m.ram[addresses_actual[i] as usize] = values[i];
+        }
+
+        for i in 0..3 {
+            let pc = cpu.pc;
+            let cycles = cpu.cycles;
+            let value = values[i];
+            cpu.x = x_values[i];
+            let instruction = cpu.fetch_instruction(&m);
+
+            cpu.execute(&mut m, instruction);
+
+            assert_eq!(cpu.a, value);
+            assert_eq!(cpu.x, x_values[i]);
+            assert_eq!(cpu.pc, pc + 2);
+            assert_eq!(cpu.cycles, cycles + 4);
+            assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
+            assert_eq!(cpu.get_zero(), value == 0);
+            assert_eq!(cpu.get_interrupt_disable(), cpu_copy.get_interrupt_disable());
+            assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+            assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
+            assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
+            assert_eq!(cpu.get_negative(), (value as i8) < 0);
+        }
     }
 
     #[test]
