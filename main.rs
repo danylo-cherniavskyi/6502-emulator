@@ -3,7 +3,7 @@ type Word = u16;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Memory {
-    ram: [Byte; 0xffff]
+    ram: [Byte; 0xffff],
 }
 
 impl Memory {
@@ -12,8 +12,7 @@ impl Memory {
     }
 
     pub fn read_word(&self, addr: Word) -> Word {
-        return ((self.ram[(addr + 1) as usize] as u16) << 8) | 
-                 self.ram[ addr      as usize] as u16;
+        return ((self.ram[(addr + 1) as usize] as u16) << 8) | self.ram[addr as usize] as u16;
     }
 
     pub fn write_byte(&mut self, addr: Word, value: Byte) {
@@ -43,7 +42,7 @@ pub enum Instruction {
     LDA_ABS_Y,
     LDA_IN_X,
     LDA_IN_Y,
-    INVALID
+    INVALID,
 }
 
 impl From<u8> for Instruction {
@@ -57,7 +56,7 @@ impl From<u8> for Instruction {
             0xB9 => Instruction::LDA_ABS_Y,
             0xA1 => Instruction::LDA_IN_X,
             0xB1 => Instruction::LDA_IN_Y,
-            _    => Instruction::INVALID,
+            _ => Instruction::INVALID,
         }
     }
 }
@@ -73,7 +72,7 @@ impl From<Instruction> for u8 {
             Instruction::LDA_ABS_Y => 0xB9,
             Instruction::LDA_IN_X => 0xA1,
             Instruction::LDA_IN_Y => 0xB1,
-            Instruction::INVALID => 0xFF
+            Instruction::INVALID => 0xFF,
         }
     }
 }
@@ -117,7 +116,7 @@ impl CPU<'_> {
     }
 
     pub fn get_status(&self) -> Byte {
-        return self.status
+        return self.status;
     }
 
     pub fn get_carry(&self) -> bool {
@@ -195,7 +194,6 @@ impl CPU<'_> {
             Instruction::LDA_IN_Y => self.lda_indirect_y(),
             Instruction::INVALID => println!("Error: Invalid instruction"),
         }
-        self.pc += 1;
     }
 
     pub fn fetch_instruction(&mut self) -> Instruction {
@@ -210,7 +208,7 @@ impl CPU<'_> {
         return self.memory.unwrap().read_byte(addr);
     }
 
-    fn read_word(&mut self, addr: Word) -> Word {
+    fn _read_word(&mut self, addr: Word) -> Word {
         self.cycles += 2; // this stuff is questionable
         return self.memory.unwrap().read_word(addr);
     }
@@ -223,6 +221,7 @@ impl CPU<'_> {
 
         self.set_zero(value == 0);
         self.set_negative((value & 0b1000_0000) != 0);
+        self.pc += 1;
     }
 
     fn lda_zero_page(&mut self) {
@@ -232,10 +231,18 @@ impl CPU<'_> {
 
         self.set_zero(value == 0);
         self.set_negative((value & 0b1000_0000) != 0);
+        self.pc += 1;
     }
 
     fn lda_zero_page_x(&mut self) {
-        todo!();
+        let address = self.read_byte(self.pc);
+        let address_final = self.add(address, self.x);
+        let value = self.read_byte(address_final as u16);
+        self.a = value;
+
+        self.set_zero(value == 0);
+        self.set_negative((value & 0b1000_0000) != 0);
+        self.pc += 1;
     }
 
     fn lda_absolute(&mut self) {
@@ -257,6 +264,12 @@ impl CPU<'_> {
     fn lda_indirect_y(&mut self) {
         todo!();
     }
+
+    fn add(&mut self, n1: u8, n2: u8) -> u8 {
+        let sum = ((n1 as u16 + n2 as u16) % 256) as u8;
+        self.cycles += 1;
+        return sum;
+    }
 }
 
 #[cfg(test)]
@@ -265,7 +278,9 @@ mod tests {
 
     #[test]
     fn test_reset() {
-        let mut cpu = CPU {..Default::default()};
+        let mut cpu = CPU {
+            ..Default::default()
+        };
 
         cpu.reset();
 
@@ -279,7 +294,9 @@ mod tests {
 
     #[test]
     fn test_flag_carry() {
-        let mut cpu = CPU {..Default::default()};
+        let mut cpu = CPU {
+            ..Default::default()
+        };
 
         cpu.set_carry(false);
         assert_eq!(cpu.get_carry(), false);
@@ -291,7 +308,9 @@ mod tests {
 
     #[test]
     fn test_flag_zero() {
-        let mut cpu = CPU {..Default::default()};
+        let mut cpu = CPU {
+            ..Default::default()
+        };
 
         cpu.set_zero(false);
         assert_eq!(cpu.get_zero(), false);
@@ -303,8 +322,10 @@ mod tests {
 
     #[test]
     fn test_flag_interrupt_disable() {
-        let mut cpu = CPU {..Default::default()};
-        
+        let mut cpu = CPU {
+            ..Default::default()
+        };
+
         cpu.set_interrupt_disable(false);
         assert_eq!(cpu.get_interrupt_disable(), false);
         cpu.set_interrupt_disable(true);
@@ -315,7 +336,9 @@ mod tests {
 
     #[test]
     fn test_flag_decimal_mode() {
-        let mut cpu = CPU {..Default::default()};
+        let mut cpu = CPU {
+            ..Default::default()
+        };
 
         cpu.set_decimal_mode(false);
         assert_eq!(cpu.get_decimal_mode(), false);
@@ -327,7 +350,9 @@ mod tests {
 
     #[test]
     fn test_flag_break_command() {
-        let mut cpu = CPU {..Default::default()};
+        let mut cpu = CPU {
+            ..Default::default()
+        };
 
         cpu.set_break_command(false);
         assert_eq!(cpu.get_break_command(), false);
@@ -339,7 +364,9 @@ mod tests {
 
     #[test]
     fn test_flag_overflow() {
-        let mut cpu = CPU {..Default::default()};
+        let mut cpu = CPU {
+            ..Default::default()
+        };
 
         cpu.set_overflow(false);
         assert_eq!(cpu.get_overflow(), false);
@@ -351,7 +378,9 @@ mod tests {
 
     #[test]
     fn test_flag_negative() {
-        let mut cpu = CPU {..Default::default()};
+        let mut cpu = CPU {
+            ..Default::default()
+        };
 
         cpu.set_negative(false);
         assert_eq!(cpu.get_negative(), false);
@@ -363,36 +392,42 @@ mod tests {
 
     #[test]
     fn test_fetch_instruction() {
-        let mut cpu = CPU {..Default::default()};
-        let mut memory = Memory {ram: [0u8; 0xffff]};
+        let mut cpu = CPU {
+            ..Default::default()
+        };
+        let mut memory = Memory { ram: [0u8; 0xffff] };
         memory.write_byte(0x0000, Instruction::LDA_IM.into());
-        
+
         cpu.memory = Some(&memory);
         let cpu_copy = cpu.clone();
-
 
         let instruction = cpu.fetch_instruction();
 
         assert_eq!(cpu.pc, cpu_copy.pc + 1);
-        assert_eq!(<Instruction as Into<u8>>::into(instruction), Instruction::LDA_IM.into());
+        assert_eq!(
+            <Instruction as Into<u8>>::into(instruction),
+            Instruction::LDA_IM.into()
+        );
     }
 
     #[test]
     fn test_lda_immediate() {
-        let mut cpu = CPU {..Default::default()};
-        let mut mem = Memory { ram: [0u8; 0xffff]};
+        let mut cpu = CPU {
+            ..Default::default()
+        };
+        let mut mem = Memory { ram: [0u8; 0xffff] };
         cpu.reset();
-        
+
         let values = [0u8, 69, (!10u8 + 1)];
-        
+
         for i in 0..3 {
-            mem.write_byte(i*2    , Instruction::LDA_IM.into());
-            mem.write_byte(i*2 + 1, values[i as usize]);
+            mem.write_byte(i * 2, Instruction::LDA_IM.into());
+            mem.write_byte(i * 2 + 1, values[i as usize]);
         }
 
         cpu.memory = Some(&mem);
         let cpu_copy = cpu.clone();
-        
+
         for value in values {
             let pc = cpu.pc;
             let cycles = cpu.cycles;
@@ -404,7 +439,10 @@ mod tests {
             assert_eq!(cpu.cycles, cycles + 2);
             assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
             assert_eq!(cpu.get_zero(), value == 0);
-            assert_eq!(cpu.get_interrupt_disable(), cpu_copy.get_interrupt_disable());
+            assert_eq!(
+                cpu.get_interrupt_disable(),
+                cpu_copy.get_interrupt_disable()
+            );
             assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
             assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
             assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
@@ -414,23 +452,27 @@ mod tests {
 
     #[test]
     fn test_lda_zero_page() {
-        let mut cpu = CPU {..Default::default()};
-        let mut mem = Memory {..Default::default()};
-        
+        let mut cpu = CPU {
+            ..Default::default()
+        };
+        let mut mem = Memory {
+            ..Default::default()
+        };
+
         cpu.reset();
-        
+
         let values = [0u8, 13, (!105u8 + 1)];
         let addresses = [0x13, 0x5A, 0xff];
-        
+
         for i in 0..3 {
-            mem.write_byte(2*i + 0, Instruction::LDA_ZP.into());
-            mem.write_byte(2*i + 1, addresses[i as usize]);
+            mem.write_byte(2 * i + 0, Instruction::LDA_ZP.into());
+            mem.write_byte(2 * i + 1, addresses[i as usize]);
             mem.write_byte(addresses[i as usize] as u16, values[i as usize]);
         }
 
         cpu.memory = Some(&mem);
         let cpu_copy = cpu.clone();
-        
+
         for value in values {
             let pc = cpu.pc;
             let cycles = cpu.cycles;
@@ -442,7 +484,10 @@ mod tests {
             assert_eq!(cpu.cycles, cycles + 3);
             assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
             assert_eq!(cpu.get_zero(), value == 0);
-            assert_eq!(cpu.get_interrupt_disable(), cpu_copy.get_interrupt_disable());
+            assert_eq!(
+                cpu.get_interrupt_disable(),
+                cpu_copy.get_interrupt_disable()
+            );
             assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
             assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
             assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
@@ -452,26 +497,30 @@ mod tests {
 
     #[test]
     fn test_lda_zero_page_x() {
-        let mut cpu = CPU {..Default::default()};
-        let mut m = Memory {..Default::default()};
-        
+        let mut cpu = CPU {
+            ..Default::default()
+        };
+        let mut m = Memory {
+            ..Default::default()
+        };
+
         cpu.reset();
-        
+
         let values = [0u8, 45, (!105u8 + 1)];
         let addresses = [0x32u8, 0xBF, 0xFF];
         let x_values = [0x57u8, 0x64, 0x10];
-        
+
         let addresses_actual = [0x89, 0x23, 0x0f];
-        
+
         for i in 0..3 {
-            m.write_byte(2*i + 0, Instruction::LDA_ZP_X.into());
-            m.write_byte(2*i + 1, addresses[i as usize]);
+            m.write_byte(2 * i + 0, Instruction::LDA_ZP_X.into());
+            m.write_byte(2 * i + 1, addresses[i as usize]);
             m.write_byte(addresses_actual[i as usize], values[i as usize]);
         }
 
         cpu.memory = Some(&m);
         let cpu_copy = cpu.clone();
-        
+
         for i in 0..3 {
             let pc = cpu.pc;
             let cycles = cpu.cycles;
@@ -487,7 +536,10 @@ mod tests {
             assert_eq!(cpu.cycles, cycles + 4);
             assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
             assert_eq!(cpu.get_zero(), value == 0);
-            assert_eq!(cpu.get_interrupt_disable(), cpu_copy.get_interrupt_disable());
+            assert_eq!(
+                cpu.get_interrupt_disable(),
+                cpu_copy.get_interrupt_disable()
+            );
             assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
             assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
             assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
@@ -497,20 +549,24 @@ mod tests {
 
     #[test]
     fn test_lda_absolute() {
-        let mut cpu = CPU {..Default::default()};
-        let mut m = Memory {..Default::default()};
-        
+        let mut cpu = CPU {
+            ..Default::default()
+        };
+        let mut m = Memory {
+            ..Default::default()
+        };
+
         cpu.reset();
-        
+
         let values = [0u8, 45, (!105u8 + 1)];
         let addresses = [0x1234u16, 0x4321, 0xfff0];
-        
+
         for i in 0..3 {
-            m.write_byte(3*i + 0, Instruction::LDA_ABS.into());
-            m.write_word(3*i + 1, addresses[i as usize]);
+            m.write_byte(3 * i + 0, Instruction::LDA_ABS.into());
+            m.write_word(3 * i + 1, addresses[i as usize]);
             m.write_byte(addresses[i as usize], values[i as usize]);
         }
-        
+
         cpu.memory = Some(&m);
         let cpu_copy = cpu.clone();
 
@@ -526,20 +582,26 @@ mod tests {
             assert_eq!(cpu.cycles, cycles + 4);
             assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
             assert_eq!(cpu.get_zero(), value == 0);
-            assert_eq!(cpu.get_interrupt_disable(), cpu_copy.get_interrupt_disable());
+            assert_eq!(
+                cpu.get_interrupt_disable(),
+                cpu_copy.get_interrupt_disable()
+            );
             assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
             assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
             assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
             assert_eq!(cpu.get_negative(), (value as i8) < 0);
         }
-        
     }
 
     #[test]
     fn test_lda_absolute_x() {
-        let mut cpu = CPU {..Default::default()};
-        let mut m = Memory {..Default::default()};
-        
+        let mut cpu = CPU {
+            ..Default::default()
+        };
+        let mut m = Memory {
+            ..Default::default()
+        };
+
         cpu.reset();
 
         let values = [0u8, 45, (!105u8 + 1)];
@@ -549,14 +611,14 @@ mod tests {
         let additional_cycles = [1, 0, 1];
 
         for i in 0..3 {
-            m.write_byte(3*i + 0, Instruction::LDA_ABS_X.into());
-            m.write_word(3*i + 1, addresses[i as usize]);
+            m.write_byte(3 * i + 0, Instruction::LDA_ABS_X.into());
+            m.write_word(3 * i + 1, addresses[i as usize]);
             m.write_byte(addresses_actual[i as usize], values[i as usize])
         }
 
         cpu.memory = Some(&m);
         let cpu_copy = cpu.clone();
-        
+
         for i in 0..3 {
             let pc = cpu.pc;
             let cycles = cpu.cycles;
@@ -572,7 +634,10 @@ mod tests {
             assert_eq!(cpu.cycles, cycles + 4 + additional_cycles[i]);
             assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
             assert_eq!(cpu.get_zero(), value == 0);
-            assert_eq!(cpu.get_interrupt_disable(), cpu_copy.get_interrupt_disable());
+            assert_eq!(
+                cpu.get_interrupt_disable(),
+                cpu_copy.get_interrupt_disable()
+            );
             assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
             assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
             assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
@@ -582,23 +647,27 @@ mod tests {
 
     #[test]
     fn test_lda_absolute_y() {
-        let mut cpu = CPU {..Default::default()};
-        let mut m = Memory {..Default::default()};
+        let mut cpu = CPU {
+            ..Default::default()
+        };
+        let mut m = Memory {
+            ..Default::default()
+        };
 
         cpu.reset();
-        
+
         let values = [0u8, 45, (!105u8 + 1)];
         let addresses = [0x1234u16, 0x0010, 0xfff0];
         let y_addresses = [0xff, 0xAB, 0x00];
         let addresses_actual = [0x1333u16, 0x00BB, 0xfff0];
         let additional_cycles = [1, 0, 1];
-        
+
         for i in 0..3 {
-            m.write_byte(3*i + 0, Instruction::LDA_ABS_Y.into());
-            m.write_word(3*i + 1, addresses[i as usize]);
+            m.write_byte(3 * i + 0, Instruction::LDA_ABS_Y.into());
+            m.write_word(3 * i + 1, addresses[i as usize]);
             m.write_byte(addresses_actual[i as usize], values[i as usize])
         }
-        
+
         cpu.memory = Some(&m);
         let cpu_copy = cpu.clone();
 
@@ -617,7 +686,10 @@ mod tests {
             assert_eq!(cpu.cycles, cycles + 4 + additional_cycles[i]);
             assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
             assert_eq!(cpu.get_zero(), value == 0);
-            assert_eq!(cpu.get_interrupt_disable(), cpu_copy.get_interrupt_disable());
+            assert_eq!(
+                cpu.get_interrupt_disable(),
+                cpu_copy.get_interrupt_disable()
+            );
             assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
             assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
             assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
@@ -627,9 +699,13 @@ mod tests {
 
     #[test]
     fn test_lda_indirect_x() {
-        let mut cpu = CPU {..Default::default()};
-        let mut m = Memory {..Default::default()};
-        
+        let mut cpu = CPU {
+            ..Default::default()
+        };
+        let mut m = Memory {
+            ..Default::default()
+        };
+
         cpu.reset();
 
         let values = [0u8, 23, (!105u8 + 1)];
@@ -637,15 +713,15 @@ mod tests {
         let x_addresses = [0x10, 0x35, 0xAB];
         let addresses = [0x62, 0x34, 0x10];
         let addresses_actual = [0x72, 0x69, 0xBB];
-        
+
         for i in 0..3 {
-            m.write_byte(i*2 + 0, Instruction::LDA_IN_X.into());
-            m.write_byte(i*2 + 1, addresses[i as usize]);
+            m.write_byte(i * 2 + 0, Instruction::LDA_IN_X.into());
+            m.write_byte(i * 2 + 1, addresses[i as usize]);
 
             m.write_byte(value_addresses[i as usize], values[i as usize]);
             m.write_word(addresses_actual[i as usize], value_addresses[i as usize]);
         }
-        
+
         cpu.memory = Some(&m);
         let cpu_copy = cpu.clone();
 
@@ -664,7 +740,10 @@ mod tests {
             assert_eq!(cpu.cycles, cycles + 6);
             assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
             assert_eq!(cpu.get_zero(), value == 0);
-            assert_eq!(cpu.get_interrupt_disable(), cpu_copy.get_interrupt_disable());
+            assert_eq!(
+                cpu.get_interrupt_disable(),
+                cpu_copy.get_interrupt_disable()
+            );
             assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
             assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
             assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
@@ -679,7 +758,9 @@ mod tests {
 }
 
 fn main() {
-    let mut cpu = CPU {..Default::default()};
+    let mut cpu = CPU {
+        ..Default::default()
+    };
     let memory = Memory { ram: [0u8; 0xffff] };
     cpu.memory = Some(&memory);
     cpu.reset();
