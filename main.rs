@@ -1,6 +1,7 @@
 type Byte = u8;
 type Word = u16;
 
+#[derive(Debug, Clone, Copy)]
 pub struct Memory {
     ram: [Byte; 0xffff]
 }
@@ -78,7 +79,7 @@ impl From<Instruction> for u8 {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct CPU {
+pub struct CPU<'a> {
     cycles: u64,
     pc: Word,
     sp: Byte,
@@ -86,9 +87,10 @@ pub struct CPU {
     x: Byte,
     y: Byte,
     status: Byte,
+    memory: Option<&'a Memory>,
 }
 
-impl Default for CPU {
+impl Default for CPU<'_> {
     fn default() -> Self {
         CPU {
             cycles: 0,
@@ -98,11 +100,12 @@ impl Default for CPU {
             x: 0,
             y: 0,
             status: 0,
+            memory: Option::None,
         }
     }
 }
 
-impl CPU {
+impl CPU<'_> {
     pub fn reset(&mut self) {
         self.cycles = 0;
         self.pc = 0;
@@ -180,82 +183,84 @@ impl CPU {
         self.status = (self.status & !(1 << 6)) | value_bin;
     }
 
-    pub fn execute(&mut self, m: &mut Memory, i: Instruction) {
+    pub fn execute(&mut self, i: Instruction) {
         match i {
-            Instruction::LDA_IM => self.lda_immediate(m),
-            Instruction::LDA_ZP => self.lda_zero_page(m),
-            Instruction::LDA_ZP_X => self.lda_zero_page_x(m),
-            Instruction::LDA_ABS => self.lda_absolute(m),
-            Instruction::LDA_ABS_X => self.lda_absolute_x(m),
-            Instruction::LDA_ABS_Y => self.lda_absolute_y(m),
-            Instruction::LDA_IN_X => self.lda_indirect_x(m),
-            Instruction::LDA_IN_Y => self.lda_indirect_y(m),
+            Instruction::LDA_IM => self.lda_immediate(),
+            Instruction::LDA_ZP => self.lda_zero_page(),
+            Instruction::LDA_ZP_X => self.lda_zero_page_x(),
+            Instruction::LDA_ABS => self.lda_absolute(),
+            Instruction::LDA_ABS_X => self.lda_absolute_x(),
+            Instruction::LDA_ABS_Y => self.lda_absolute_y(),
+            Instruction::LDA_IN_X => self.lda_indirect_x(),
+            Instruction::LDA_IN_Y => self.lda_indirect_y(),
             Instruction::INVALID => println!("Error: Invalid instruction"),
         }
+        self.pc += 1;
     }
 
-    pub fn fetch_instruction(&mut self, m: &Memory) -> Instruction {
-        let instruction = m.read_byte(self.pc);
+    pub fn fetch_instruction(&mut self) -> Instruction {
+        let instruction = self.read_byte(self.pc);
         self.pc += 1;
-        self.cycles += 1;
 
         return Instruction::from(instruction);
     }
+
+    fn read_byte(&mut self, addr: Word) -> Byte {
+        self.cycles += 1;
+        return self.memory.unwrap().read_byte(addr);
+    }
+
+    fn read_word(&mut self, addr: Word) -> Word {
+        self.cycles += 2; // this stuff is questionable
+        return self.memory.unwrap().read_word(addr);
+    }
 }
 
-impl CPU {
-    fn lda_immediate(&mut self, m: &mut Memory) {
-        let value = m.read_byte(self.pc);
+impl CPU<'_> {
+    fn lda_immediate(&mut self) {
+        let value = self.read_byte(self.pc);
         self.a = value;
 
         self.set_zero(value == 0);
         self.set_negative((value & 0b1000_0000) != 0);
-
-        self.pc += 1;
-        self.cycles += 1;
     }
 
-    fn lda_zero_page(&mut self, m: &mut Memory) {
-        let address = m.read_byte(self.pc);
-        let value = m.read_byte(address as u16);
+    fn lda_zero_page(&mut self) {
+        let address = self.read_byte(self.pc);
+        let value = self.read_byte(address as u16);
         self.a = value;
 
         self.set_zero(value == 0);
         self.set_negative((value & 0b1000_0000) != 0);
-
-        self.pc += 1;
-        self.cycles += 2;
     }
 
-    fn lda_zero_page_x(&mut self, m: &mut Memory) {
+    fn lda_zero_page_x(&mut self) {
         todo!();
     }
 
-    fn lda_absolute(&mut self, m: &mut Memory) {
+    fn lda_absolute(&mut self) {
         todo!();
     }
 
-    fn lda_absolute_x(&mut self, m: &mut Memory) {
+    fn lda_absolute_x(&mut self) {
         todo!();
     }
 
-    fn lda_absolute_y(&mut self, m: &mut Memory) {
+    fn lda_absolute_y(&mut self) {
         todo!();
     }
 
-    fn lda_indirect_x(&mut self, m: &mut Memory) {
+    fn lda_indirect_x(&mut self) {
         todo!();
     }
 
-    fn lda_indirect_y(&mut self, m: &mut Memory) {
+    fn lda_indirect_y(&mut self) {
         todo!();
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::default;
-
     use super::*;
 
     #[test]
@@ -359,11 +364,14 @@ mod tests {
     #[test]
     fn test_fetch_instruction() {
         let mut cpu = CPU {..Default::default()};
-        let cpu_copy = cpu.clone();
         let mut memory = Memory {ram: [0u8; 0xffff]};
         memory.write_byte(0x0000, Instruction::LDA_IM.into());
+        
+        cpu.memory = Some(&memory);
+        let cpu_copy = cpu.clone();
 
-        let instruction = cpu.fetch_instruction(&mut memory);
+
+        let instruction = cpu.fetch_instruction();
 
         assert_eq!(cpu.pc, cpu_copy.pc + 1);
         assert_eq!(<Instruction as Into<u8>>::into(instruction), Instruction::LDA_IM.into());
@@ -372,22 +380,24 @@ mod tests {
     #[test]
     fn test_lda_immediate() {
         let mut cpu = CPU {..Default::default()};
-        let cpu_copy = cpu.clone();
         let mut mem = Memory { ram: [0u8; 0xffff]};
         cpu.reset();
-
+        
         let values = [0u8, 69, (!10u8 + 1)];
-
+        
         for i in 0..3 {
             mem.write_byte(i*2    , Instruction::LDA_IM.into());
             mem.write_byte(i*2 + 1, values[i as usize]);
         }
 
+        cpu.memory = Some(&mem);
+        let cpu_copy = cpu.clone();
+        
         for value in values {
             let pc = cpu.pc;
             let cycles = cpu.cycles;
-            let instruction = cpu.fetch_instruction(&mem);
-            cpu.execute(&mut mem, instruction);
+            let instruction = cpu.fetch_instruction();
+            cpu.execute(instruction);
 
             assert_eq!(cpu.a, value);
             assert_eq!(cpu.pc, pc + 2);
@@ -405,25 +415,27 @@ mod tests {
     #[test]
     fn test_lda_zero_page() {
         let mut cpu = CPU {..Default::default()};
-        let cpu_copy = cpu.clone();
         let mut mem = Memory {..Default::default()};
-
+        
         cpu.reset();
-
+        
         let values = [0u8, 13, (!105u8 + 1)];
         let addresses = [0x13, 0x5A, 0xff];
-
+        
         for i in 0..3 {
             mem.write_byte(2*i + 0, Instruction::LDA_ZP.into());
             mem.write_byte(2*i + 1, addresses[i as usize]);
             mem.write_byte(addresses[i as usize] as u16, values[i as usize]);
         }
 
+        cpu.memory = Some(&mem);
+        let cpu_copy = cpu.clone();
+        
         for value in values {
             let pc = cpu.pc;
             let cycles = cpu.cycles;
-            let instruction = cpu.fetch_instruction(&mem);
-            cpu.execute(&mut mem, instruction);
+            let instruction = cpu.fetch_instruction();
+            cpu.execute(instruction);
 
             assert_eq!(cpu.a, value);
             assert_eq!(cpu.pc, pc + 2);
@@ -441,31 +453,33 @@ mod tests {
     #[test]
     fn test_lda_zero_page_x() {
         let mut cpu = CPU {..Default::default()};
-        let cpu_copy = cpu.clone();
         let mut m = Memory {..Default::default()};
-
+        
         cpu.reset();
-
+        
         let values = [0u8, 45, (!105u8 + 1)];
         let addresses = [0x32u8, 0xBF, 0xFF];
         let x_values = [0x57u8, 0x64, 0x10];
-
+        
         let addresses_actual = [0x89, 0x23, 0x0f];
-
+        
         for i in 0..3 {
             m.write_byte(2*i + 0, Instruction::LDA_ZP_X.into());
             m.write_byte(2*i + 1, addresses[i as usize]);
             m.write_byte(addresses_actual[i as usize], values[i as usize]);
         }
 
+        cpu.memory = Some(&m);
+        let cpu_copy = cpu.clone();
+        
         for i in 0..3 {
             let pc = cpu.pc;
             let cycles = cpu.cycles;
             let value = values[i];
             cpu.x = x_values[i];
-            let instruction = cpu.fetch_instruction(&m);
+            let instruction = cpu.fetch_instruction();
 
-            cpu.execute(&mut m, instruction);
+            cpu.execute(instruction);
 
             assert_eq!(cpu.a, value);
             assert_eq!(cpu.x, x_values[i]);
@@ -484,26 +498,28 @@ mod tests {
     #[test]
     fn test_lda_absolute() {
         let mut cpu = CPU {..Default::default()};
-        let cpu_copy = cpu.clone();
         let mut m = Memory {..Default::default()};
-
+        
         cpu.reset();
-
+        
         let values = [0u8, 45, (!105u8 + 1)];
         let addresses = [0x1234u16, 0x4321, 0xfff0];
-
+        
         for i in 0..3 {
             m.write_byte(3*i + 0, Instruction::LDA_ABS.into());
             m.write_word(3*i + 1, addresses[i as usize]);
             m.write_byte(addresses[i as usize], values[i as usize]);
         }
+        
+        cpu.memory = Some(&m);
+        let cpu_copy = cpu.clone();
 
         for value in values {
             let pc = cpu.pc;
             let cycles = cpu.cycles;
-            let instruction = cpu.fetch_instruction(&m);
+            let instruction = cpu.fetch_instruction();
 
-            cpu.execute(&mut m, instruction);
+            cpu.execute(instruction);
 
             assert_eq!(cpu.a, value);
             assert_eq!(cpu.pc, pc + 3);
@@ -522,9 +538,8 @@ mod tests {
     #[test]
     fn test_lda_absolute_x() {
         let mut cpu = CPU {..Default::default()};
-        let cpu_copy = cpu.clone();
         let mut m = Memory {..Default::default()};
-
+        
         cpu.reset();
 
         let values = [0u8, 45, (!105u8 + 1)];
@@ -539,14 +554,17 @@ mod tests {
             m.write_byte(addresses_actual[i as usize], values[i as usize])
         }
 
+        cpu.memory = Some(&m);
+        let cpu_copy = cpu.clone();
+        
         for i in 0..3 {
             let pc = cpu.pc;
             let cycles = cpu.cycles;
             let value = values[i];
             cpu.x = x_addresses[i];
-            let instruction = cpu.fetch_instruction(&m);
+            let instruction = cpu.fetch_instruction();
 
-            cpu.execute(&mut m, instruction);
+            cpu.execute(instruction);
 
             assert_eq!(cpu.a, value);
             assert_eq!(cpu.x, x_addresses[i]);
@@ -565,31 +583,33 @@ mod tests {
     #[test]
     fn test_lda_absolute_y() {
         let mut cpu = CPU {..Default::default()};
-        let cpu_copy = cpu.clone();
         let mut m = Memory {..Default::default()};
 
         cpu.reset();
-
+        
         let values = [0u8, 45, (!105u8 + 1)];
         let addresses = [0x1234u16, 0x0010, 0xfff0];
         let y_addresses = [0xff, 0xAB, 0x00];
         let addresses_actual = [0x1333u16, 0x00BB, 0xfff0];
         let additional_cycles = [1, 0, 1];
-
+        
         for i in 0..3 {
             m.write_byte(3*i + 0, Instruction::LDA_ABS_Y.into());
             m.write_word(3*i + 1, addresses[i as usize]);
             m.write_byte(addresses_actual[i as usize], values[i as usize])
         }
+        
+        cpu.memory = Some(&m);
+        let cpu_copy = cpu.clone();
 
         for i in 0..3 {
             let pc = cpu.pc;
             let cycles = cpu.cycles;
             let value = values[i];
             cpu.y = y_addresses[i];
-            let instruction = cpu.fetch_instruction(&m);
+            let instruction = cpu.fetch_instruction();
 
-            cpu.execute(&mut m, instruction);
+            cpu.execute(instruction);
 
             assert_eq!(cpu.a, value);
             assert_eq!(cpu.y, y_addresses[i]);
@@ -608,9 +628,8 @@ mod tests {
     #[test]
     fn test_lda_indirect_x() {
         let mut cpu = CPU {..Default::default()};
-        let cpu_copy = cpu.clone();
         let mut m = Memory {..Default::default()};
-
+        
         cpu.reset();
 
         let values = [0u8, 23, (!105u8 + 1)];
@@ -618,7 +637,7 @@ mod tests {
         let x_addresses = [0x10, 0x35, 0xAB];
         let addresses = [0x62, 0x34, 0x10];
         let addresses_actual = [0x72, 0x69, 0xBB];
-
+        
         for i in 0..3 {
             m.write_byte(i*2 + 0, Instruction::LDA_IN_X.into());
             m.write_byte(i*2 + 1, addresses[i as usize]);
@@ -626,15 +645,18 @@ mod tests {
             m.write_byte(value_addresses[i as usize], values[i as usize]);
             m.write_word(addresses_actual[i as usize], value_addresses[i as usize]);
         }
+        
+        cpu.memory = Some(&m);
+        let cpu_copy = cpu.clone();
 
         for i in 0..3 {
             let pc = cpu.pc;
             let cycles = cpu.cycles;
             let value = values[i];
             cpu.x = x_addresses[i];
-            let instruction = cpu.fetch_instruction(&m);
+            let instruction = cpu.fetch_instruction();
 
-            cpu.execute(&mut m, instruction);
+            cpu.execute(instruction);
 
             assert_eq!(cpu.a, value);
             assert_eq!(cpu.x, x_addresses[i]);
@@ -658,9 +680,9 @@ mod tests {
 
 fn main() {
     let mut cpu = CPU {..Default::default()};
-    let mut memory = Memory { ram: [0u8; 0xffff] };
-
+    let memory = Memory { ram: [0u8; 0xffff] };
+    cpu.memory = Some(&memory);
     cpu.reset();
 
-    cpu.execute(&mut memory, Instruction::LDA_IM);
+    cpu.execute(Instruction::LDA_ZP);
 }
