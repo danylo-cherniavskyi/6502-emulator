@@ -291,7 +291,16 @@ impl CPU<'_> {
     }
 
     fn lda_indirect_y(&mut self) {
-        todo!();
+        let instruction_address = self.read_byte(self.pc);
+        let y_address = self.y;
+        let address_zp = self.read_word(instruction_address as u16);
+        let actual_address = address_zp + y_address as u16;
+        let value = self.read_byte(actual_address);
+        self.a = value;
+        self.test_number(value);
+
+        self.pc += 1;
+        self.cycles += if actual_address < 256 { 5 } else { 6 };
     }
 
     fn add_mod_256(&mut self, n1: u8, n2: u8) -> u8 {
