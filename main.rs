@@ -216,9 +216,8 @@ impl CPU<'_> {
     fn lda_immediate(&mut self) {
         let value = self.read_byte(self.pc);
         self.a = value;
+        self.test_number(value);
 
-        self.set_zero(value == 0);
-        self.set_negative((value & 0b1000_0000) != 0);
         self.pc += 1;
         self.cycles += 2
     }
@@ -227,9 +226,8 @@ impl CPU<'_> {
         let address = self.read_byte(self.pc);
         let value = self.read_byte(address as u16);
         self.a = value;
+        self.test_number(value);
 
-        self.set_zero(value == 0);
-        self.set_negative((value & 0b1000_0000) != 0);
         self.pc += 1;
         self.cycles += 3
     }
@@ -239,9 +237,8 @@ impl CPU<'_> {
         let address_final = self.add_mod_256(address, self.x);
         let value = self.read_byte(address_final as u16);
         self.a = value;
+        self.test_number(value);
 
-        self.set_zero(value == 0);
-        self.set_negative((value & 0b1000_0000) != 0);
         self.pc += 1;
         self.cycles += 4
     }
@@ -250,15 +247,22 @@ impl CPU<'_> {
         let address = self.read_word(self.pc);
         let value = self.read_byte(address);
         self.a = value;
+        self.test_number(value);
 
-        self.set_zero(value == 0);
-        self.set_negative((value & 0b1000_0000) != 0);
         self.pc += 2;
         self.cycles += 4
     }
 
     fn lda_absolute_x(&mut self) {
-        todo!();
+        let instruction_address = self.read_word(self.pc);
+        let x_address = self.x;
+        let address = instruction_address + x_address as u16;
+        let value = self.read_byte(address);
+        self.a = value;
+        self.test_number(value);
+
+        self.pc += 2;
+        self.cycles += if address < 256 { 4 } else { 5 }
     }
 
     fn lda_absolute_y(&mut self) {
@@ -276,6 +280,12 @@ impl CPU<'_> {
     fn add_mod_256(&mut self, n1: u8, n2: u8) -> u8 {
         let sum = ((n1 as u16 + n2 as u16) % 256) as u8;
         return sum;
+    }
+
+    // Sets flags based on number passed
+    fn test_number(&mut self, num: u8) {
+        self.set_zero(num == 0);
+        self.set_negative((num & 0b1000_0000) != 0);
     }
 }
 
