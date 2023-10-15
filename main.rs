@@ -262,11 +262,19 @@ impl CPU<'_> {
         self.test_number(value);
 
         self.pc += 2;
-        self.cycles += if address < 256 { 4 } else { 5 }
+        self.cycles += if address < 256 { 4 } else { 5 };
     }
 
     fn lda_absolute_y(&mut self) {
-        todo!();
+        let instruction_address = self.read_word(self.pc);
+        let y_address = self.y;
+        let address = instruction_address + y_address as u16;
+        let value = self.read_byte(address);
+        self.a = value;
+        self.test_number(value);
+
+        self.pc += 2;
+        self.cycles += if address < 256 { 4 } else { 5 };
     }
 
     fn lda_indirect_x(&mut self) {
