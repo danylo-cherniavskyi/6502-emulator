@@ -787,7 +787,57 @@ mod tests {
 
     #[test]
     fn test_lda_indirect_y() {
-        todo!()
+        let mut cpu = CPU {
+            ..Default::default()
+        };
+        let mut m = Memory {
+            ..Default::default()
+        };
+
+        cpu.reset();
+
+        let values = [0u8, 23, (!105u8 + 1)];
+        let address_addresses = [0x62, 0x34, 0x10];
+        let addresses = [0x1224, 0x0034, 0xAB22];
+        let y_addresses = [0x10, 0x35, 0xAB];
+        let value_addresses = [0x1234, 0x0069, 0xABCD];
+        let additional_cycles = [1, 0, 1];
+
+        for i in 0..3 {
+            m.write_byte(i * 2 + 0, Instruction::LDA_IN_Y.into());
+            m.write_byte(i * 2 + 1, address_addresses[i as usize]);
+
+            m.write_byte(value_addresses[i as usize], values[i as usize]);
+            m.write_word(address_addresses[i as usize] as u16, addresses[i as usize]);
+        }
+
+        cpu.memory = Some(&m);
+        let cpu_copy = cpu.clone();
+
+        for i in 0..3 {
+            let pc = cpu.pc;
+            let cycles = cpu.cycles;
+            let value = values[i];
+            cpu.y = y_addresses[i];
+            let instruction = cpu.fetch_instruction();
+
+            cpu.execute(instruction);
+
+            assert_eq!(cpu.a, value);
+            assert_eq!(cpu.y, y_addresses[i]);
+            assert_eq!(cpu.pc, pc + 2);
+            assert_eq!(cpu.cycles, cycles + 5 + additional_cycles[i]);
+            assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
+            assert_eq!(cpu.get_zero(), value == 0);
+            assert_eq!(
+                cpu.get_interrupt_disable(),
+                cpu_copy.get_interrupt_disable()
+            );
+            assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+            assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
+            assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
+            assert_eq!(cpu.get_negative(), (value as i8) < 0);
+        }
     }
 }
 
