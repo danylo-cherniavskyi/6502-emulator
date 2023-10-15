@@ -911,17 +911,139 @@ mod tests {
 
     #[test]
     fn test_ldx_immediate() {
-        todo!();
+        let mut cpu = CPU {
+            ..Default::default()
+        };
+        let mut mem = Memory { ram: [0u8; 0xffff] };
+        cpu.reset();
+
+        let values = [0u8, 69, (!10u8 + 1)];
+
+        for i in 0..3 {
+            mem.write_byte(i * 2, Instruction::LDX_IM.into());
+            mem.write_byte(i * 2 + 1, values[i as usize]);
+        }
+
+        cpu.memory = Some(&mem);
+        let cpu_copy = cpu.clone();
+
+        for value in values {
+            let pc = cpu.pc;
+            let cycles = cpu.cycles;
+            let instruction = cpu.fetch_instruction();
+            cpu.execute(instruction);
+
+            assert_eq!(cpu.x, value);
+            assert_eq!(cpu.pc, pc + 2);
+            assert_eq!(cpu.cycles, cycles + 2);
+            assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
+            assert_eq!(cpu.get_zero(), value == 0);
+            assert_eq!(
+                cpu.get_interrupt_disable(),
+                cpu_copy.get_interrupt_disable()
+            );
+            assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+            assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
+            assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
+            assert_eq!(cpu.get_negative(), (value as i8) < 0);
+        }
     }
 
     #[test]
     fn test_ldx_zero_page() {
-        todo!();
+        let mut cpu = CPU {
+            ..Default::default()
+        };
+        let mut mem = Memory {
+            ..Default::default()
+        };
+
+        cpu.reset();
+
+        let values = [0u8, 13, (!105u8 + 1)];
+        let addresses = [0x13, 0x5A, 0xff];
+
+        for i in 0..3 {
+            mem.write_byte(2 * i + 0, Instruction::LDX_ZP.into());
+            mem.write_byte(2 * i + 1, addresses[i as usize]);
+            mem.write_byte(addresses[i as usize] as u16, values[i as usize]);
+        }
+
+        cpu.memory = Some(&mem);
+        let cpu_copy = cpu.clone();
+
+        for value in values {
+            let pc = cpu.pc;
+            let cycles = cpu.cycles;
+            let instruction = cpu.fetch_instruction();
+            cpu.execute(instruction);
+
+            assert_eq!(cpu.x, value);
+            assert_eq!(cpu.pc, pc + 2);
+            assert_eq!(cpu.cycles, cycles + 3);
+            assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
+            assert_eq!(cpu.get_zero(), value == 0);
+            assert_eq!(
+                cpu.get_interrupt_disable(),
+                cpu_copy.get_interrupt_disable()
+            );
+            assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+            assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
+            assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
+            assert_eq!(cpu.get_negative(), (value as i8) < 0);
+        }
     }
 
     #[test]
     fn test_ldx_zero_page_y() {
-        todo!();
+        let mut cpu = CPU {
+            ..Default::default()
+        };
+        let mut m = Memory {
+            ..Default::default()
+        };
+
+        cpu.reset();
+
+        let values = [0u8, 45, (!105u8 + 1)];
+        let addresses = [0x32u8, 0xBF, 0xFF];
+        let y_values = [0x57u8, 0x64, 0x10];
+
+        let addresses_actual = [0x89, 0x23, 0x0f];
+
+        for i in 0..3 {
+            m.write_byte(2 * i + 0, Instruction::LDX_ZP_Y.into());
+            m.write_byte(2 * i + 1, addresses[i as usize]);
+            m.write_byte(addresses_actual[i as usize], values[i as usize]);
+        }
+
+        cpu.memory = Some(&m);
+        let cpu_copy = cpu.clone();
+
+        for i in 0..3 {
+            let pc = cpu.pc;
+            let cycles = cpu.cycles;
+            let value = values[i];
+            cpu.x = y_values[i];
+            let instruction = cpu.fetch_instruction();
+
+            cpu.execute(instruction);
+
+            assert_eq!(cpu.x, value);
+            assert_eq!(cpu.y, y_values[i]);
+            assert_eq!(cpu.pc, pc + 2);
+            assert_eq!(cpu.cycles, cycles + 4);
+            assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
+            assert_eq!(cpu.get_zero(), value == 0);
+            assert_eq!(
+                cpu.get_interrupt_disable(),
+                cpu_copy.get_interrupt_disable()
+            );
+            assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+            assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
+            assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
+            assert_eq!(cpu.get_negative(), (value as i8) < 0);
+        }
     }
 
     #[test]
