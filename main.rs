@@ -34,6 +34,7 @@ impl Default for Memory {
 #[allow(non_camel_case_types)]
 #[repr(u8)]
 pub enum Instruction {
+    // LDA
     LDA_IM,
     LDA_ZP,
     LDA_ZP_X,
@@ -42,12 +43,21 @@ pub enum Instruction {
     LDA_ABS_Y,
     LDA_IN_X,
     LDA_IN_Y,
+
+    // LDX
+    LDX_IM,
+    LDX_ZP,
+    LDX_ZP_Y,
+    LDX_ABS,
+    LDX_ABS_Y,
+
     INVALID,
 }
 
 impl From<u8> for Instruction {
     fn from(a: u8) -> Self {
         match a {
+            // LDA
             0xA9 => Instruction::LDA_IM,
             0xA5 => Instruction::LDA_ZP,
             0xB5 => Instruction::LDA_ZP_X,
@@ -56,6 +66,13 @@ impl From<u8> for Instruction {
             0xB9 => Instruction::LDA_ABS_Y,
             0xA1 => Instruction::LDA_IN_X,
             0xB1 => Instruction::LDA_IN_Y,
+            // LDX
+            0xA2 => Instruction::LDX_IM,
+            0xA6 => Instruction::LDX_ZP,
+            0xB6 => Instruction::LDX_ZP_Y,
+            0xAE => Instruction::LDX_ABS,
+            0xBE => Instruction::LDX_ABS_Y,
+
             _ => Instruction::INVALID,
         }
     }
@@ -64,6 +81,7 @@ impl From<u8> for Instruction {
 impl From<Instruction> for u8 {
     fn from(a: Instruction) -> Self {
         match a {
+            // LDA
             Instruction::LDA_IM => 0xA9,
             Instruction::LDA_ZP => 0xA5,
             Instruction::LDA_ZP_X => 0xB5,
@@ -72,6 +90,14 @@ impl From<Instruction> for u8 {
             Instruction::LDA_ABS_Y => 0xB9,
             Instruction::LDA_IN_X => 0xA1,
             Instruction::LDA_IN_Y => 0xB1,
+            // LDX
+            Instruction::LDX_IM => 0xA2,
+            Instruction::LDX_ZP => 0xA6,
+            Instruction::LDX_ZP_Y => 0xB6,
+            Instruction::LDX_ABS => 0xAE,
+            Instruction::LDX_ABS_Y => 0xBE,
+
+
             Instruction::INVALID => 0xFF,
         }
     }
@@ -184,6 +210,7 @@ impl CPU<'_> {
 
     pub fn execute(&mut self, i: Instruction) {
         match i {
+            // LDA
             Instruction::LDA_IM => self.lda_immediate(),
             Instruction::LDA_ZP => self.lda_zero_page(),
             Instruction::LDA_ZP_X => self.lda_zero_page_x(),
@@ -192,6 +219,13 @@ impl CPU<'_> {
             Instruction::LDA_ABS_Y => self.lda_absolute_y(),
             Instruction::LDA_IN_X => self.lda_indirect_x(),
             Instruction::LDA_IN_Y => self.lda_indirect_y(),
+            // LDX
+            Instruction::LDX_IM => self.ldx_immediate(),
+            Instruction::LDX_ZP => self.ldx_zero_page(),
+            Instruction::LDX_ZP_Y => self.ldx_zero_page_y(),
+            Instruction::LDX_ABS => self.ldx_absolute(),
+            Instruction::LDX_ABS_Y => self.ldx_absolute_y(),
+
             Instruction::INVALID => println!("Error: Invalid instruction"),
         }
     }
@@ -312,6 +346,28 @@ impl CPU<'_> {
     fn test_number(&mut self, num: u8) {
         self.set_zero(num == 0);
         self.set_negative((num & 0b1000_0000) != 0);
+    }
+}
+
+impl CPU<'_> {
+    fn ldx_immediate(&mut self) {
+        todo!();
+    }
+
+    fn ldx_zero_page(&mut self) {
+        todo!();
+    }
+
+    fn ldx_zero_page_y(&mut self) {
+        todo!();
+    }
+
+    fn ldx_absolute(&mut self) {
+        todo!();
+    }
+
+    fn ldx_absolute_y(&mut self) {
+        todo!();
     }
 }
 
@@ -452,6 +508,8 @@ mod tests {
             Instruction::LDA_IM.into()
         );
     }
+
+    // LDA
 
     #[test]
     fn test_lda_immediate() {
@@ -847,6 +905,33 @@ mod tests {
             assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
             assert_eq!(cpu.get_negative(), (value as i8) < 0);
         }
+    }
+
+    // LDX
+
+    #[test]
+    fn test_ldx_immediate() {
+        todo!();
+    }
+
+    #[test]
+    fn test_ldx_zero_page() {
+        todo!();
+    }
+
+    #[test]
+    fn test_ldx_zero_page_y() {
+        todo!();
+    }
+
+    #[test]
+    fn test_ldx_absolute() {
+        todo!();
+    }
+
+    #[test]
+    fn test_ldx_absolute_y() {
+        todo!();
     }
 }
 
