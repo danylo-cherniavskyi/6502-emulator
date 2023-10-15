@@ -236,7 +236,7 @@ impl CPU<'_> {
 
     fn lda_zero_page_x(&mut self) {
         let address = self.read_byte(self.pc);
-        let address_final = self.add(address, self.x);
+        let address_final = self.add_mod_256(address, self.x);
         let value = self.read_byte(address_final as u16);
         self.a = value;
 
@@ -273,9 +273,8 @@ impl CPU<'_> {
         todo!();
     }
 
-    fn add(&mut self, n1: u8, n2: u8) -> u8 {
+    fn add_mod_256(&mut self, n1: u8, n2: u8) -> u8 {
         let sum = ((n1 as u16 + n2 as u16) % 256) as u8;
-        self.cycles += 1;
         return sum;
     }
 }
