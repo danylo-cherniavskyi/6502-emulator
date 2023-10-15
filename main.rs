@@ -278,7 +278,16 @@ impl CPU<'_> {
     }
 
     fn lda_indirect_x(&mut self) {
-        todo!();
+        let instruction_address = self.read_byte(self.pc);
+        let x_address = self.x;
+        let address = self.add_mod_256(instruction_address, x_address);
+        let actual_address = self.read_word(address as u16);
+        let value = self.read_byte(actual_address);
+        self.a = value;
+        self.test_number(value);
+
+        self.pc += 1;
+        self.cycles += 6;
     }
 
     fn lda_indirect_y(&mut self) {
