@@ -204,12 +204,10 @@ impl CPU<'_> {
     }
 
     fn read_byte(&mut self, addr: Word) -> Byte {
-        self.cycles += 1;
         return self.memory.unwrap().read_byte(addr);
     }
 
-    fn _read_word(&mut self, addr: Word) -> Word {
-        self.cycles += 2; // this stuff is questionable
+    fn read_word(&mut self, addr: Word) -> Word {
         return self.memory.unwrap().read_word(addr);
     }
 }
@@ -222,6 +220,7 @@ impl CPU<'_> {
         self.set_zero(value == 0);
         self.set_negative((value & 0b1000_0000) != 0);
         self.pc += 1;
+        self.cycles += 2
     }
 
     fn lda_zero_page(&mut self) {
@@ -232,6 +231,7 @@ impl CPU<'_> {
         self.set_zero(value == 0);
         self.set_negative((value & 0b1000_0000) != 0);
         self.pc += 1;
+        self.cycles += 3
     }
 
     fn lda_zero_page_x(&mut self) {
@@ -243,10 +243,18 @@ impl CPU<'_> {
         self.set_zero(value == 0);
         self.set_negative((value & 0b1000_0000) != 0);
         self.pc += 1;
+        self.cycles += 4
     }
 
     fn lda_absolute(&mut self) {
-        todo!();
+        let address = self.read_word(self.pc);
+        let value = self.read_byte(address);
+        self.a = value;
+
+        self.set_zero(value == 0);
+        self.set_negative((value & 0b1000_0000) != 0);
+        self.pc += 2;
+        self.cycles += 4
     }
 
     fn lda_absolute_x(&mut self) {
