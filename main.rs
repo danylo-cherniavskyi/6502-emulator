@@ -946,6 +946,16 @@ mod tests {
     test_ld_absolute_reg! {test_ldx_absolute_y, x, LDX_ABS_Y, y}
 
     // LDY
+
+    test_ld_immediate! {test_ldy_immediate, y, LDY_IM}
+
+    test_ld_zero_page! {test_ldy_zero_page, y, LDY_ZP}
+
+    test_ld_zero_page_reg! {test_ldy_zero_page_x, y, LDY_ZP_X, x}
+
+    test_ld_absolute! {test_ldy_absolute, y, LDY_ZP}
+
+    test_ld_absolute_reg! {test_ldy_absolute_x, y, LDY_ABS_X, x}
 }
 
 fn main() {
