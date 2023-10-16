@@ -370,9 +370,54 @@ impl CPU<'_> {
     }
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    
+    macro_rules! test_ld_immediate {
+        ($func_name:ident, $reg_name:ident, $instr_name:ident) => {
+            #[test]
+            fn $func_name() {
+                let mut cpu = CPU {
+                    ..Default::default()
+                };
+                let mut mem = Memory { ram: [0u8; 0xffff] };
+                cpu.reset();
+        
+                let values = [0u8, 69, (!10u8 + 1)];
+        
+                for i in 0..3 {
+                    mem.write_byte(i * 2, Instruction::$instr_name.into());
+                    mem.write_byte(i * 2 + 1, values[i as usize]);
+                }
+        
+                cpu.memory = Some(&mem);
+                let cpu_copy = cpu.clone();
+        
+                for value in values {
+                    let pc = cpu.pc;
+                    let cycles = cpu.cycles;
+                    let instruction = cpu.fetch_instruction();
+                    cpu.execute(instruction);
+        
+                    assert_eq!(cpu.$reg_name, value);
+                    assert_eq!(cpu.pc, pc + 2);
+                    assert_eq!(cpu.cycles, cycles + 2);
+                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
+                    assert_eq!(cpu.get_zero(), value == 0);
+                    assert_eq!(
+                        cpu.get_interrupt_disable(),
+                        cpu_copy.get_interrupt_disable()
+                    );
+                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
+                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
+                    assert_eq!(cpu.get_negative(), (value as i8) < 0);
+                }
+            }
+        };
+    }
 
     #[test]
     fn test_reset() {
@@ -510,45 +555,7 @@ mod tests {
 
     // LDA
 
-    #[test]
-    fn test_lda_immediate() {
-        let mut cpu = CPU {
-            ..Default::default()
-        };
-        let mut mem = Memory { ram: [0u8; 0xffff] };
-        cpu.reset();
-
-        let values = [0u8, 69, (!10u8 + 1)];
-
-        for i in 0..3 {
-            mem.write_byte(i * 2, Instruction::LDA_IM.into());
-            mem.write_byte(i * 2 + 1, values[i as usize]);
-        }
-
-        cpu.memory = Some(&mem);
-        let cpu_copy = cpu.clone();
-
-        for value in values {
-            let pc = cpu.pc;
-            let cycles = cpu.cycles;
-            let instruction = cpu.fetch_instruction();
-            cpu.execute(instruction);
-
-            assert_eq!(cpu.a, value);
-            assert_eq!(cpu.pc, pc + 2);
-            assert_eq!(cpu.cycles, cycles + 2);
-            assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
-            assert_eq!(cpu.get_zero(), value == 0);
-            assert_eq!(
-                cpu.get_interrupt_disable(),
-                cpu_copy.get_interrupt_disable()
-            );
-            assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-            assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
-            assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
-            assert_eq!(cpu.get_negative(), (value as i8) < 0);
-        }
-    }
+    test_ld_immediate!{test_lda_immediate, a, LDA_IM}
 
     #[test]
     fn test_lda_zero_page() {
@@ -908,45 +915,7 @@ mod tests {
 
     // LDX
 
-    #[test]
-    fn test_ldx_immediate() {
-        let mut cpu = CPU {
-            ..Default::default()
-        };
-        let mut mem = Memory { ram: [0u8; 0xffff] };
-        cpu.reset();
-
-        let values = [0u8, 69, (!10u8 + 1)];
-
-        for i in 0..3 {
-            mem.write_byte(i * 2, Instruction::LDX_IM.into());
-            mem.write_byte(i * 2 + 1, values[i as usize]);
-        }
-
-        cpu.memory = Some(&mem);
-        let cpu_copy = cpu.clone();
-
-        for value in values {
-            let pc = cpu.pc;
-            let cycles = cpu.cycles;
-            let instruction = cpu.fetch_instruction();
-            cpu.execute(instruction);
-
-            assert_eq!(cpu.x, value);
-            assert_eq!(cpu.pc, pc + 2);
-            assert_eq!(cpu.cycles, cycles + 2);
-            assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
-            assert_eq!(cpu.get_zero(), value == 0);
-            assert_eq!(
-                cpu.get_interrupt_disable(),
-                cpu_copy.get_interrupt_disable()
-            );
-            assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-            assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
-            assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
-            assert_eq!(cpu.get_negative(), (value as i8) < 0);
-        }
-    }
+    test_ld_immediate!{test_ldx_immediate, x, LDX_IM}
 
     #[test]
     fn test_ldx_zero_page() {
@@ -1142,6 +1111,8 @@ mod tests {
             assert_eq!(cpu.get_negative(), (value as i8) < 0);
         }
     }
+
+    // LDY
 }
 
 fn main() {
