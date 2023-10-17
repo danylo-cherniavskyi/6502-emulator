@@ -326,6 +326,22 @@ macro_rules! ld_absolute {
     };
 }
 
+macro_rules! ld_absolute_reg {
+    ($func_name: ident, $reg_name: ident, $addr_reg: ident) => {
+        fn $func_name(&mut self) {
+            let instruction_address = self.read_word(self.pc);
+            let reg_address = self.$addr_reg;
+            let address = instruction_address + reg_address as u16;
+            let value = self.read_byte(address);
+            self.$reg_name = value;
+            self.test_number(value);
+    
+            self.pc += 2;
+            self.cycles += if address < 256 { 4 } else { 5 };
+        }
+    };
+}
+
 impl CPU<'_> {
     ld_immediate! {lda_immediate, a}
 
@@ -335,29 +351,9 @@ impl CPU<'_> {
 
     ld_absolute! {lda_absolute, a}
 
-    fn lda_absolute_x(&mut self) {
-        let instruction_address = self.read_word(self.pc);
-        let x_address = self.x;
-        let address = instruction_address + x_address as u16;
-        let value = self.read_byte(address);
-        self.a = value;
-        self.test_number(value);
+    ld_absolute_reg! {lda_absolute_x, a, x}
 
-        self.pc += 2;
-        self.cycles += if address < 256 { 4 } else { 5 };
-    }
-
-    fn lda_absolute_y(&mut self) {
-        let instruction_address = self.read_word(self.pc);
-        let y_address = self.y;
-        let address = instruction_address + y_address as u16;
-        let value = self.read_byte(address);
-        self.a = value;
-        self.test_number(value);
-
-        self.pc += 2;
-        self.cycles += if address < 256 { 4 } else { 5 };
-    }
+    ld_absolute_reg! {lda_absolute_y, a, y}
 
     fn lda_indirect_x(&mut self) {
         let instruction_address = self.read_byte(self.pc);
@@ -406,9 +402,7 @@ impl CPU<'_> {
 
     ld_absolute! {ldx_absolute, x}
 
-    fn ldx_absolute_y(&mut self) {
-        todo!();
-    }
+    ld_absolute_reg! {ldx_absolute_y, x, y}
 }
 
 impl CPU<'_> {
@@ -420,9 +414,7 @@ impl CPU<'_> {
 
     ld_absolute! {ldy_absolute, y}
 
-    fn ldy_absolute_x(&mut self) {
-        todo!();
-    }
+    ld_absolute_reg! {ldy_absolute_x, y, x}
 }
 
 #[cfg(test)]
