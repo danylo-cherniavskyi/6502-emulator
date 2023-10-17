@@ -58,6 +58,25 @@ pub enum Instruction {
     LDY_ABS,
     LDY_ABS_X,
 
+    // STA
+    STA_ZP,
+    STA_ZP_X,
+    STA_ABS,
+    STA_ABS_X,
+    STA_ABS_Y,
+    STA_IN_X,
+    STA_IN_Y,
+
+    // STX
+    STX_ZP,
+    STX_ZP_Y,
+    STX_ABS,
+
+    // STY
+    STY_ZP,
+    STY_ZP_X,
+    STY_ABS,
+
     INVALID,
 }
 
@@ -85,6 +104,22 @@ impl From<u8> for Instruction {
             0xB4 => Instruction::LDY_ZP_X,
             0xAC => Instruction::LDY_ABS,
             0xBC => Instruction::LDY_ABS_X,
+            // STA
+            0x85 => Instruction::STA_ZP,
+            0x95 => Instruction::STA_ZP_X,
+            0x8D => Instruction::STA_ABS,
+            0x9D => Instruction::STA_ABS_X,
+            0x99 => Instruction::STA_ABS_Y,
+            0x81 => Instruction::STA_IN_X,
+            0x91 => Instruction::STA_IN_Y,
+            // STX
+            0x86 => Instruction::STX_ZP,
+            0x96 => Instruction::STX_ZP_Y,
+            0x8E => Instruction::STX_ABS,
+            // STY
+            0x84 => Instruction::STY_ZP,
+            0x94 => Instruction::STY_ZP_X,
+            0x8C => Instruction::STY_ABS,
 
             _ => Instruction::INVALID,
         }
@@ -115,6 +150,22 @@ impl From<Instruction> for u8 {
             Instruction::LDY_ZP_X => 0xB4,
             Instruction::LDY_ABS => 0xAC,
             Instruction::LDY_ABS_X => 0xBC,
+            // STA
+            Instruction::STA_ZP => 0x85,
+            Instruction::STA_ZP_X => 0x95,
+            Instruction::STA_ABS => 0x8D,
+            Instruction::STA_ABS_X => 0x9D,
+            Instruction::STA_ABS_Y => 0x99,
+            Instruction::STA_IN_X => 0x81,
+            Instruction::STA_IN_Y => 0x91,
+            // STX
+            Instruction::STX_ZP => 0x86,
+            Instruction::STX_ZP_Y => 0x96,
+            Instruction::STX_ABS => 0x8E,
+            // STY
+            Instruction::STY_ZP => 0x84,
+            Instruction::STY_ZP_X => 0x94,
+            Instruction::STY_ABS => 0x8C,
 
             Instruction::INVALID => 0xFF,
         }
@@ -249,6 +300,22 @@ impl CPU<'_> {
             Instruction::LDY_ZP_X => self.ldy_zero_page_x(),
             Instruction::LDY_ABS => self.ldy_absolute(),
             Instruction::LDY_ABS_X => self.ldy_absolute_x(),
+            // STA
+            Instruction::STA_ZP => self.sta_zero_page(),
+            Instruction::STA_ZP_X => self.sta_zero_page_x(),
+            Instruction::STA_ABS => self.sta_absolute(),
+            Instruction::STA_ABS_X => self.sta_absolute_x(),
+            Instruction::STA_ABS_Y => self.sta_absolute_y(),
+            Instruction::STA_IN_X => self.sta_indirect_x(),
+            Instruction::STA_IN_Y => self.sta_indirect_y(),
+            // STX
+            Instruction::STX_ZP => self.stx_zero_page(),
+            Instruction::STX_ZP_Y => self.stx_zero_page_y(),
+            Instruction::STX_ABS => self.stx_absolute(),
+            // STY
+            Instruction::STY_ZP => self.sty_zero_page(),
+            Instruction::STY_ZP_X => self.sty_zero_page_x(),
+            Instruction::STY_ABS => self.sty_absolute(),
 
             Instruction::INVALID => println!("Error: Invalid instruction"),
         }
@@ -415,6 +482,64 @@ impl CPU<'_> {
     ld_absolute! {ldy_absolute, y}
 
     ld_absolute_reg! {ldy_absolute_x, y, x}
+}
+
+impl CPU<'_> {
+    fn sta_zero_page(&mut self) {
+        todo!();
+    }
+
+    fn sta_zero_page_x(&mut self) {
+        todo!();
+    }
+
+    fn sta_absolute(&mut self) {
+        todo!();
+    }
+
+    fn sta_absolute_x(&mut self) {
+        todo!();
+    }
+
+    fn sta_absolute_y(&mut self) {
+        todo!();
+    }
+
+    fn sta_indirect_x(&mut self) {
+        todo!();
+    }
+
+    fn sta_indirect_y(&mut self) {
+        todo!();
+    }
+}
+
+impl CPU<'_> {
+    fn stx_zero_page(&mut self) {
+        todo!();
+    }
+
+    fn stx_zero_page_y(&mut self) {
+        todo!();
+    }
+
+    fn stx_absolute(&mut self) {
+        todo!();
+    }
+}
+
+impl CPU<'_> {
+    fn sty_zero_page(&mut self) {
+        todo!();
+    }
+
+    fn sty_zero_page_x(&mut self) {
+        todo!();
+    }
+
+    fn sty_absolute(&mut self) {
+        todo!();
+    }
 }
 
 #[cfg(test)]
