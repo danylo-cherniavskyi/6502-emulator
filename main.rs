@@ -1,7 +1,7 @@
 type Byte = u8;
 type Word = u16;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Memory {
     ram: [Byte; 0xffff],
 }
@@ -783,6 +783,59 @@ mod tests {
         };
     }
 
+    macro_rules! test_st_zero_page {
+        ($func_name: ident, $reg_name: ident, $instr_name: ident) => {
+            #[test]
+            fn $func_name() {
+                let mut cpu = CPU {
+                    ..Default::default()
+                };
+                let mut memory = Memory {
+                    ..Default::default()
+                };
+        
+                cpu.reset();
+                let cpu_copy = cpu.clone();
+        
+                
+                let values = [0u8, 69, (!105u8 + 1)];
+                let addresses = [0xff, 0x69, 0x10];
+        
+                for i in 0..3 {
+                    memory.write_byte(2 * i + 0, Instruction::$instr_name.into());
+                    memory.write_byte(2 * i + 1, addresses[i as usize]);
+                }
+        
+                for i in 0..3 {
+                    let pc = cpu.pc;
+                    let cycles = cpu.cycles;
+                    let address = addresses[i];
+                    let value = values[i];
+                    let instruction = cpu.fetch_instruction(&memory);
+        
+                    cpu.$reg_name = value;
+        
+                    cpu.execute(&mut memory, instruction);
+        
+                    assert_eq!(memory.read_byte(address as u16), value);
+        
+                    assert_eq!(cpu.pc, pc + 2);
+                    assert_eq!(cpu.cycles, cycles + 3);
+                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
+                    assert_eq!(cpu.get_zero(), cpu_copy.get_zero());
+                    assert_eq!(
+                        cpu.get_interrupt_disable(),
+                        cpu_copy.get_interrupt_disable()
+                    );
+                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
+                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
+                    assert_eq!(cpu.get_negative(), cpu_copy.get_negative());
+                }
+            }
+        };
+    }
+
     #[test]
     fn test_reset() {
         let mut cpu = CPU {
@@ -1058,6 +1111,16 @@ mod tests {
     test_ld_absolute! {test_ldy_absolute, y, LDY_ABS}
 
     test_ld_absolute_reg! {test_ldy_absolute_x, y, LDY_ABS_X, x}
+
+    // STA
+    test_st_zero_page! {test_sta_zero_page, a, STA_ZP}
+
+    // STX
+    test_st_zero_page! {test_stx_zero_page, x, STX_ZP}
+
+    // STY
+    test_st_zero_page! {test_sty_zero_page, y, STY_ZP}
+
 }
 
 fn main() {
