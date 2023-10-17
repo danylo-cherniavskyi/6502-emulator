@@ -283,18 +283,24 @@ macro_rules! ld_immediate {
     };
 }
 
+macro_rules! ld_zero_page {
+    ($func_name: ident, $reg_name: ident) => {
+        fn $func_name(&mut self) {
+            let address = self.read_byte(self.pc);
+            let value = self.read_byte(address as u16);
+            self.$reg_name = value;
+            self.test_number(value);
+    
+            self.pc += 1;
+            self.cycles += 3
+        }
+    };
+}
+
 impl CPU<'_> {
     ld_immediate! {lda_immediate, a}
 
-    fn lda_zero_page(&mut self) {
-        let address = self.read_byte(self.pc);
-        let value = self.read_byte(address as u16);
-        self.a = value;
-        self.test_number(value);
-
-        self.pc += 1;
-        self.cycles += 3
-    }
+    ld_zero_page! {lda_zero_page, a}
 
     fn lda_zero_page_x(&mut self) {
         let address = self.read_byte(self.pc);
@@ -382,9 +388,7 @@ impl CPU<'_> {
 impl CPU<'_> {
     ld_immediate! {ldx_immediate, x}
 
-    fn ldx_zero_page(&mut self) {
-        todo!();
-    }
+    ld_zero_page! {ldx_zero_page, x}
 
     fn ldx_zero_page_y(&mut self) {
         todo!();
@@ -402,9 +406,7 @@ impl CPU<'_> {
 impl CPU<'_> {
     ld_immediate! {ldy_immediate, y}
 
-    fn ldy_zero_page(&mut self) {
-        todo!();
-    }
+    ld_zero_page! {ldy_zero_page, y}
 
     fn ldy_zero_page_x(&mut self) {
         todo!();
