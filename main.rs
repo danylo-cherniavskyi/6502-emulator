@@ -1,7 +1,7 @@
 type Byte = u8;
 type Word = u16;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct Memory {
     ram: [Byte; 0xffff],
 }
@@ -150,6 +150,7 @@ impl From<Instruction> for u8 {
             Instruction::LDY_ZP_X => 0xB4,
             Instruction::LDY_ABS => 0xAC,
             Instruction::LDY_ABS_X => 0xBC,
+
             // STA
             Instruction::STA_ZP => 0x85,
             Instruction::STA_ZP_X => 0x95,
@@ -172,8 +173,8 @@ impl From<Instruction> for u8 {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct CPU<'a> {
+#[derive(Debug, Clone)]
+pub struct CPU {
     cycles: u64,
     pc: Word,
     sp: Byte,
@@ -181,10 +182,9 @@ pub struct CPU<'a> {
     x: Byte,
     y: Byte,
     status: Byte,
-    memory: Option<&'a Memory>,
 }
 
-impl Default for CPU<'_> {
+impl Default for CPU {
     fn default() -> Self {
         CPU {
             cycles: 0,
@@ -194,12 +194,11 @@ impl Default for CPU<'_> {
             x: 0,
             y: 0,
             status: 0,
-            memory: Option::None,
         }
     }
 }
 
-impl CPU<'_> {
+impl CPU {
     pub fn reset(&mut self) {
         self.cycles = 0;
         self.pc = 0;
@@ -277,29 +276,30 @@ impl CPU<'_> {
         self.status = (self.status & !(1 << 6)) | value_bin;
     }
 
-    pub fn execute(&mut self, i: Instruction) {
+    pub fn execute(&mut self, memory: &mut Memory, i: Instruction) {
         match i {
             // LDA
-            Instruction::LDA_IM => self.lda_immediate(),
-            Instruction::LDA_ZP => self.lda_zero_page(),
-            Instruction::LDA_ZP_X => self.lda_zero_page_x(),
-            Instruction::LDA_ABS => self.lda_absolute(),
-            Instruction::LDA_ABS_X => self.lda_absolute_x(),
-            Instruction::LDA_ABS_Y => self.lda_absolute_y(),
-            Instruction::LDA_IN_X => self.lda_indirect_x(),
-            Instruction::LDA_IN_Y => self.lda_indirect_y(),
+            Instruction::LDA_IM => self.lda_immediate(memory),
+            Instruction::LDA_ZP => self.lda_zero_page(memory),
+            Instruction::LDA_ZP_X => self.lda_zero_page_x(memory),
+            Instruction::LDA_ABS => self.lda_absolute(memory),
+            Instruction::LDA_ABS_X => self.lda_absolute_x(memory),
+            Instruction::LDA_ABS_Y => self.lda_absolute_y(memory),
+            Instruction::LDA_IN_X => self.lda_indirect_x(memory),
+            Instruction::LDA_IN_Y => self.lda_indirect_y(memory),
             // LDX
-            Instruction::LDX_IM => self.ldx_immediate(),
-            Instruction::LDX_ZP => self.ldx_zero_page(),
-            Instruction::LDX_ZP_Y => self.ldx_zero_page_y(),
-            Instruction::LDX_ABS => self.ldx_absolute(),
-            Instruction::LDX_ABS_Y => self.ldx_absolute_y(),
+            Instruction::LDX_IM => self.ldx_immediate(memory),
+            Instruction::LDX_ZP => self.ldx_zero_page(memory),
+            Instruction::LDX_ZP_Y => self.ldx_zero_page_y(memory),
+            Instruction::LDX_ABS => self.ldx_absolute(memory),
+            Instruction::LDX_ABS_Y => self.ldx_absolute_y(memory),
             // LDY
-            Instruction::LDY_IM => self.ldy_immediate(),
-            Instruction::LDY_ZP => self.ldy_zero_page(),
-            Instruction::LDY_ZP_X => self.ldy_zero_page_x(),
-            Instruction::LDY_ABS => self.ldy_absolute(),
-            Instruction::LDY_ABS_X => self.ldy_absolute_x(),
+            Instruction::LDY_IM => self.ldy_immediate(memory),
+            Instruction::LDY_ZP => self.ldy_zero_page(memory),
+            Instruction::LDY_ZP_X => self.ldy_zero_page_x(memory),
+            Instruction::LDY_ABS => self.ldy_absolute(memory),
+            Instruction::LDY_ABS_X => self.ldy_absolute_x(memory),
+
             // STA
             Instruction::STA_ZP => self.sta_zero_page(),
             Instruction::STA_ZP_X => self.sta_zero_page_x(),
@@ -321,26 +321,18 @@ impl CPU<'_> {
         }
     }
 
-    pub fn fetch_instruction(&mut self) -> Instruction {
-        let instruction = self.read_byte(self.pc);
+    pub fn fetch_instruction(&mut self, memory: &Memory) -> Instruction {
+        let instruction = memory.read_byte(self.pc);
         self.pc += 1;
 
         return Instruction::from(instruction);
-    }
-
-    fn read_byte(&mut self, addr: Word) -> Byte {
-        return self.memory.unwrap().read_byte(addr);
-    }
-
-    fn read_word(&mut self, addr: Word) -> Word {
-        return self.memory.unwrap().read_word(addr);
     }
 }
 
 macro_rules! ld_immediate {
     ($func_name: ident, $reg_name: ident) => {
-        fn $func_name(&mut self) {
-            let value = self.read_byte(self.pc);
+        fn $func_name(&mut self, memory: &Memory) {
+            let value = memory.read_byte(self.pc);
             self.$reg_name = value;
             self.test_number(value);
 
@@ -352,12 +344,12 @@ macro_rules! ld_immediate {
 
 macro_rules! ld_zero_page {
     ($func_name: ident, $reg_name: ident) => {
-        fn $func_name(&mut self) {
-            let address = self.read_byte(self.pc);
-            let value = self.read_byte(address as u16);
+        fn $func_name(&mut self, memory: &Memory) {
+            let address = memory.read_byte(self.pc);
+            let value = memory.read_byte(address as u16);
             self.$reg_name = value;
             self.test_number(value);
-    
+
             self.pc += 1;
             self.cycles += 3
         }
@@ -366,13 +358,13 @@ macro_rules! ld_zero_page {
 
 macro_rules! ld_zero_page_reg {
     ($func_name: ident, $reg_name: ident, $addr_reg: ident) => {
-        fn $func_name(&mut self) {
-            let address = self.read_byte(self.pc);
+        fn $func_name(&mut self, memory: &Memory) {
+            let address = memory.read_byte(self.pc);
             let address_final = self.add_mod_256(address, self.$addr_reg);
-            let value = self.read_byte(address_final as u16);
+            let value = memory.read_byte(address_final as u16);
             self.$reg_name = value;
             self.test_number(value);
-    
+
             self.pc += 1;
             self.cycles += 4
         }
@@ -381,9 +373,9 @@ macro_rules! ld_zero_page_reg {
 
 macro_rules! ld_absolute {
     ($func_name: ident, $reg_name: ident) => {
-        fn $func_name(&mut self) {
-            let address = self.read_word(self.pc);
-            let value = self.read_byte(address);
+        fn $func_name(&mut self, memory: &Memory) {
+            let address = memory.read_word(self.pc);
+            let value = memory.read_byte(address);
             self.$reg_name = value;
             self.test_number(value);
 
@@ -395,21 +387,21 @@ macro_rules! ld_absolute {
 
 macro_rules! ld_absolute_reg {
     ($func_name: ident, $reg_name: ident, $addr_reg: ident) => {
-        fn $func_name(&mut self) {
-            let instruction_address = self.read_word(self.pc);
+        fn $func_name(&mut self, memory: &Memory) {
+            let instruction_address = memory.read_word(self.pc);
             let reg_address = self.$addr_reg;
             let address = instruction_address + reg_address as u16;
-            let value = self.read_byte(address);
+            let value = memory.read_byte(address);
             self.$reg_name = value;
             self.test_number(value);
-    
+
             self.pc += 2;
             self.cycles += if address < 256 { 4 } else { 5 };
         }
     };
 }
 
-impl CPU<'_> {
+impl CPU {
     ld_immediate! {lda_immediate, a}
 
     ld_zero_page! {lda_zero_page, a}
@@ -422,12 +414,12 @@ impl CPU<'_> {
 
     ld_absolute_reg! {lda_absolute_y, a, y}
 
-    fn lda_indirect_x(&mut self) {
-        let instruction_address = self.read_byte(self.pc);
+    fn lda_indirect_x(&mut self, memory: &Memory) {
+        let instruction_address = memory.read_byte(self.pc);
         let x_address = self.x;
         let address = self.add_mod_256(instruction_address, x_address);
-        let actual_address = self.read_word(address as u16);
-        let value = self.read_byte(actual_address);
+        let actual_address = memory.read_word(address as u16);
+        let value = memory.read_byte(actual_address);
         self.a = value;
         self.test_number(value);
 
@@ -435,12 +427,12 @@ impl CPU<'_> {
         self.cycles += 6;
     }
 
-    fn lda_indirect_y(&mut self) {
-        let instruction_address = self.read_byte(self.pc);
+    fn lda_indirect_y(&mut self, memory: &Memory) {
+        let instruction_address = memory.read_byte(self.pc);
         let y_address = self.y;
-        let address_zp = self.read_word(instruction_address as u16);
+        let address_zp = memory.read_word(instruction_address as u16);
         let actual_address = address_zp + y_address as u16;
-        let value = self.read_byte(actual_address);
+        let value = memory.read_byte(actual_address);
         self.a = value;
         self.test_number(value);
 
@@ -460,7 +452,7 @@ impl CPU<'_> {
     }
 }
 
-impl CPU<'_> {
+impl CPU {
     ld_immediate! {ldx_immediate, x}
 
     ld_zero_page! {ldx_zero_page, x}
@@ -472,7 +464,7 @@ impl CPU<'_> {
     ld_absolute_reg! {ldx_absolute_y, x, y}
 }
 
-impl CPU<'_> {
+impl CPU {
     ld_immediate! {ldy_immediate, y}
 
     ld_zero_page! {ldy_zero_page, y}
@@ -484,7 +476,7 @@ impl CPU<'_> {
     ld_absolute_reg! {ldy_absolute_x, y, x}
 }
 
-impl CPU<'_> {
+impl CPU {
     fn sta_zero_page(&mut self) {
         todo!();
     }
@@ -514,7 +506,7 @@ impl CPU<'_> {
     }
 }
 
-impl CPU<'_> {
+impl CPU {
     fn stx_zero_page(&mut self) {
         todo!();
     }
@@ -528,7 +520,7 @@ impl CPU<'_> {
     }
 }
 
-impl CPU<'_> {
+impl CPU {
     fn sty_zero_page(&mut self) {
         todo!();
     }
@@ -553,24 +545,22 @@ mod tests {
                 let mut cpu = CPU {
                     ..Default::default()
                 };
-                let mut mem = Memory { ram: [0u8; 0xffff] };
+                let mut memory = Memory { ram: [0u8; 0xffff] };
                 cpu.reset();
+                let cpu_copy = cpu.clone();
 
                 let values = [0u8, 69, (!10u8 + 1)];
 
                 for i in 0..3 {
-                    mem.write_byte(i * 2, Instruction::$instr_name.into());
-                    mem.write_byte(i * 2 + 1, values[i as usize]);
+                    memory.write_byte(i * 2, Instruction::$instr_name.into());
+                    memory.write_byte(i * 2 + 1, values[i as usize]);
                 }
-
-                cpu.memory = Some(&mem);
-                let cpu_copy = cpu.clone();
 
                 for value in values {
                     let pc = cpu.pc;
                     let cycles = cpu.cycles;
-                    let instruction = cpu.fetch_instruction();
-                    cpu.execute(instruction);
+                    let instruction = cpu.fetch_instruction(&memory);
+                    cpu.execute(&mut memory, instruction);
 
                     assert_eq!(cpu.$reg_name, value);
                     assert_eq!(cpu.pc, pc + 2);
@@ -597,29 +587,27 @@ mod tests {
                 let mut cpu = CPU {
                     ..Default::default()
                 };
-                let mut mem = Memory {
+                let mut memory = Memory {
                     ..Default::default()
                 };
 
                 cpu.reset();
+                let cpu_copy = cpu.clone();
 
                 let values = [0u8, 13, (!105u8 + 1)];
                 let addresses = [0x13, 0x5A, 0xff];
 
                 for i in 0..3 {
-                    mem.write_byte(2 * i + 0, Instruction::$instr_name.into());
-                    mem.write_byte(2 * i + 1, addresses[i as usize]);
-                    mem.write_byte(addresses[i as usize] as u16, values[i as usize]);
+                    memory.write_byte(2 * i + 0, Instruction::$instr_name.into());
+                    memory.write_byte(2 * i + 1, addresses[i as usize]);
+                    memory.write_byte(addresses[i as usize] as u16, values[i as usize]);
                 }
-
-                cpu.memory = Some(&mem);
-                let cpu_copy = cpu.clone();
 
                 for value in values {
                     let pc = cpu.pc;
                     let cycles = cpu.cycles;
-                    let instruction = cpu.fetch_instruction();
-                    cpu.execute(instruction);
+                    let instruction = cpu.fetch_instruction(&memory);
+                    cpu.execute(&mut memory, instruction);
 
                     assert_eq!(cpu.$reg_name, value);
                     assert_eq!(cpu.pc, pc + 2);
@@ -646,11 +634,12 @@ mod tests {
                 let mut cpu = CPU {
                     ..Default::default()
                 };
-                let mut m = Memory {
+                let mut memory = Memory {
                     ..Default::default()
                 };
 
                 cpu.reset();
+                let cpu_copy = cpu.clone();
 
                 let values = [0u8, 45, (!105u8 + 1)];
                 let addresses = [0x32u8, 0xBF, 0xFF];
@@ -659,22 +648,19 @@ mod tests {
                 let addresses_actual = [0x89, 0x23, 0x0f];
 
                 for i in 0..3 {
-                    m.write_byte(2 * i + 0, Instruction::$instr_name.into());
-                    m.write_byte(2 * i + 1, addresses[i as usize]);
-                    m.write_byte(addresses_actual[i as usize], values[i as usize]);
+                    memory.write_byte(2 * i + 0, Instruction::$instr_name.into());
+                    memory.write_byte(2 * i + 1, addresses[i as usize]);
+                    memory.write_byte(addresses_actual[i as usize], values[i as usize]);
                 }
-
-                cpu.memory = Some(&m);
-                let cpu_copy = cpu.clone();
 
                 for i in 0..3 {
                     let pc = cpu.pc;
                     let cycles = cpu.cycles;
                     let value = values[i];
                     cpu.$addr_reg = addr_reg_values[i];
-                    let instruction = cpu.fetch_instruction();
+                    let instruction = cpu.fetch_instruction(&memory);
 
-                    cpu.execute(instruction);
+                    cpu.execute(&mut memory, instruction);
 
                     assert_eq!(cpu.$reg_name, value);
                     assert_eq!(cpu.$addr_reg, addr_reg_values[i]);
@@ -702,30 +688,28 @@ mod tests {
                 let mut cpu = CPU {
                     ..Default::default()
                 };
-                let mut m = Memory {
+                let mut memory = Memory {
                     ..Default::default()
                 };
 
                 cpu.reset();
+                let cpu_copy = cpu.clone();
 
                 let values = [0u8, 45, (!105u8 + 1)];
                 let addresses = [0x1234u16, 0x4321, 0xfff0];
 
                 for i in 0..3 {
-                    m.write_byte(3 * i + 0, Instruction::$instr_name.into());
-                    m.write_word(3 * i + 1, addresses[i as usize]);
-                    m.write_byte(addresses[i as usize], values[i as usize]);
+                    memory.write_byte(3 * i + 0, Instruction::$instr_name.into());
+                    memory.write_word(3 * i + 1, addresses[i as usize]);
+                    memory.write_byte(addresses[i as usize], values[i as usize]);
                 }
-
-                cpu.memory = Some(&m);
-                let cpu_copy = cpu.clone();
 
                 for value in values {
                     let pc = cpu.pc;
                     let cycles = cpu.cycles;
-                    let instruction = cpu.fetch_instruction();
+                    let instruction = cpu.fetch_instruction(&memory);
 
-                    cpu.execute(instruction);
+                    cpu.execute(&mut memory, instruction);
 
                     assert_eq!(cpu.$reg_name, value);
                     assert_eq!(cpu.pc, pc + 3);
@@ -752,11 +736,12 @@ mod tests {
                 let mut cpu = CPU {
                     ..Default::default()
                 };
-                let mut m = Memory {
+                let mut memory = Memory {
                     ..Default::default()
                 };
 
                 cpu.reset();
+                let cpu_copy = cpu.clone();
 
                 let values = [0u8, 45, (!105u8 + 1)];
                 let addresses = [0x1234u16, 0x0010, 0xfff0];
@@ -765,22 +750,19 @@ mod tests {
                 let additional_cycles = [1, 0, 1];
 
                 for i in 0..3 {
-                    m.write_byte(3 * i + 0, Instruction::$instr_name.into());
-                    m.write_word(3 * i + 1, addresses[i as usize]);
-                    m.write_byte(addresses_actual[i as usize], values[i as usize])
+                    memory.write_byte(3 * i + 0, Instruction::$instr_name.into());
+                    memory.write_word(3 * i + 1, addresses[i as usize]);
+                    memory.write_byte(addresses_actual[i as usize], values[i as usize])
                 }
-
-                cpu.memory = Some(&m);
-                let cpu_copy = cpu.clone();
 
                 for i in 0..3 {
                     let pc = cpu.pc;
                     let cycles = cpu.cycles;
                     let value = values[i];
                     cpu.$addr_reg = addr_reg_addresses[i];
-                    let instruction = cpu.fetch_instruction();
+                    let instruction = cpu.fetch_instruction(&memory);
 
-                    cpu.execute(instruction);
+                    cpu.execute(&mut memory, instruction);
 
                     assert_eq!(cpu.$reg_name, value);
                     assert_eq!(cpu.$addr_reg, addr_reg_addresses[i]);
@@ -923,10 +905,9 @@ mod tests {
         let mut memory = Memory { ram: [0u8; 0xffff] };
         memory.write_byte(0x0000, Instruction::LDA_IM.into());
 
-        cpu.memory = Some(&memory);
         let cpu_copy = cpu.clone();
 
-        let instruction = cpu.fetch_instruction();
+        let instruction = cpu.fetch_instruction(&memory);
 
         assert_eq!(cpu.pc, cpu_copy.pc + 1);
         assert_eq!(
@@ -954,11 +935,12 @@ mod tests {
         let mut cpu = CPU {
             ..Default::default()
         };
-        let mut m = Memory {
+        let mut memory = Memory {
             ..Default::default()
         };
-
+        
         cpu.reset();
+        let cpu_copy = cpu.clone();
 
         let values = [0u8, 23, (!105u8 + 1)];
         let value_addresses = [0x1234, 0x4321, 0xABCD];
@@ -967,24 +949,21 @@ mod tests {
         let addresses_actual = [0x72, 0x69, 0xBB];
 
         for i in 0..3 {
-            m.write_byte(i * 2 + 0, Instruction::LDA_IN_X.into());
-            m.write_byte(i * 2 + 1, addresses[i as usize]);
+            memory.write_byte(i * 2 + 0, Instruction::LDA_IN_X.into());
+            memory.write_byte(i * 2 + 1, addresses[i as usize]);
 
-            m.write_byte(value_addresses[i as usize], values[i as usize]);
-            m.write_word(addresses_actual[i as usize], value_addresses[i as usize]);
+            memory.write_byte(value_addresses[i as usize], values[i as usize]);
+            memory.write_word(addresses_actual[i as usize], value_addresses[i as usize]);
         }
-
-        cpu.memory = Some(&m);
-        let cpu_copy = cpu.clone();
 
         for i in 0..3 {
             let pc = cpu.pc;
             let cycles = cpu.cycles;
             let value = values[i];
             cpu.x = x_addresses[i];
-            let instruction = cpu.fetch_instruction();
+            let instruction = cpu.fetch_instruction(&memory);
 
-            cpu.execute(instruction);
+            cpu.execute(&mut memory, instruction);
 
             assert_eq!(cpu.a, value);
             assert_eq!(cpu.x, x_addresses[i]);
@@ -1008,11 +987,12 @@ mod tests {
         let mut cpu = CPU {
             ..Default::default()
         };
-        let mut m = Memory {
+        let mut memory = Memory {
             ..Default::default()
         };
 
         cpu.reset();
+        let cpu_copy = cpu.clone();
 
         let values = [0u8, 23, (!105u8 + 1)];
         let address_addresses = [0x62, 0x34, 0x10];
@@ -1022,24 +1002,21 @@ mod tests {
         let additional_cycles = [1, 0, 1];
 
         for i in 0..3 {
-            m.write_byte(i * 2 + 0, Instruction::LDA_IN_Y.into());
-            m.write_byte(i * 2 + 1, address_addresses[i as usize]);
+            memory.write_byte(i * 2 + 0, Instruction::LDA_IN_Y.into());
+            memory.write_byte(i * 2 + 1, address_addresses[i as usize]);
 
-            m.write_byte(value_addresses[i as usize], values[i as usize]);
-            m.write_word(address_addresses[i as usize] as u16, addresses[i as usize]);
+            memory.write_byte(value_addresses[i as usize], values[i as usize]);
+            memory.write_word(address_addresses[i as usize] as u16, addresses[i as usize]);
         }
-
-        cpu.memory = Some(&m);
-        let cpu_copy = cpu.clone();
 
         for i in 0..3 {
             let pc = cpu.pc;
             let cycles = cpu.cycles;
             let value = values[i];
             cpu.y = y_addresses[i];
-            let instruction = cpu.fetch_instruction();
+            let instruction = cpu.fetch_instruction(&memory);
 
-            cpu.execute(instruction);
+            cpu.execute(&mut memory, instruction);
 
             assert_eq!(cpu.a, value);
             assert_eq!(cpu.y, y_addresses[i]);
@@ -1087,9 +1064,8 @@ fn main() {
     let mut cpu = CPU {
         ..Default::default()
     };
-    let memory = Memory { ram: [0u8; 0xffff] };
-    cpu.memory = Some(&memory);
+    let mut memory = Memory { ram: [0u8; 0xffff] };
     cpu.reset();
 
-    cpu.execute(Instruction::LDA_ZP);
+    cpu.execute(&mut memory, Instruction::LDA_ZP);
 }
