@@ -297,21 +297,27 @@ macro_rules! ld_zero_page {
     };
 }
 
+macro_rules! ld_zero_page_reg {
+    ($func_name: ident, $reg_name: ident, $addr_reg: ident) => {
+        fn $func_name(&mut self) {
+            let address = self.read_byte(self.pc);
+            let address_final = self.add_mod_256(address, self.$addr_reg);
+            let value = self.read_byte(address_final as u16);
+            self.$reg_name = value;
+            self.test_number(value);
+    
+            self.pc += 1;
+            self.cycles += 4
+        }
+    };
+}
+
 impl CPU<'_> {
     ld_immediate! {lda_immediate, a}
 
     ld_zero_page! {lda_zero_page, a}
 
-    fn lda_zero_page_x(&mut self) {
-        let address = self.read_byte(self.pc);
-        let address_final = self.add_mod_256(address, self.x);
-        let value = self.read_byte(address_final as u16);
-        self.a = value;
-        self.test_number(value);
-
-        self.pc += 1;
-        self.cycles += 4
-    }
+    ld_zero_page_reg! {lda_zero_page_x, a, x}
 
     fn lda_absolute(&mut self) {
         let address = self.read_word(self.pc);
@@ -390,9 +396,7 @@ impl CPU<'_> {
 
     ld_zero_page! {ldx_zero_page, x}
 
-    fn ldx_zero_page_y(&mut self) {
-        todo!();
-    }
+    ld_zero_page_reg! {ldx_zero_page_y, x, y}
 
     fn ldx_absolute(&mut self) {
         todo!();
@@ -408,9 +412,7 @@ impl CPU<'_> {
 
     ld_zero_page! {ldy_zero_page, y}
 
-    fn ldy_zero_page_x(&mut self) {
-        todo!();
-    }
+    ld_zero_page_reg! {ldy_zero_page_x, y, x}
 
     fn ldy_absolute(&mut self) {
         todo!();
@@ -550,7 +552,7 @@ mod tests {
                     let pc = cpu.pc;
                     let cycles = cpu.cycles;
                     let value = values[i];
-                    cpu.x = addr_reg_values[i];
+                    cpu.$addr_reg = addr_reg_values[i];
                     let instruction = cpu.fetch_instruction();
 
                     cpu.execute(instruction);
