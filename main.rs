@@ -312,6 +312,20 @@ macro_rules! ld_zero_page_reg {
     };
 }
 
+macro_rules! ld_absolute {
+    ($func_name: ident, $reg_name: ident) => {
+        fn $func_name(&mut self) {
+            let address = self.read_word(self.pc);
+            let value = self.read_byte(address);
+            self.$reg_name = value;
+            self.test_number(value);
+
+            self.pc += 2;
+            self.cycles += 4
+        }
+    };
+}
+
 impl CPU<'_> {
     ld_immediate! {lda_immediate, a}
 
@@ -319,15 +333,7 @@ impl CPU<'_> {
 
     ld_zero_page_reg! {lda_zero_page_x, a, x}
 
-    fn lda_absolute(&mut self) {
-        let address = self.read_word(self.pc);
-        let value = self.read_byte(address);
-        self.a = value;
-        self.test_number(value);
-
-        self.pc += 2;
-        self.cycles += 4
-    }
+    ld_absolute! {lda_absolute, a}
 
     fn lda_absolute_x(&mut self) {
         let instruction_address = self.read_word(self.pc);
@@ -398,9 +404,7 @@ impl CPU<'_> {
 
     ld_zero_page_reg! {ldx_zero_page_y, x, y}
 
-    fn ldx_absolute(&mut self) {
-        todo!();
-    }
+    ld_absolute! {ldx_absolute, x}
 
     fn ldx_absolute_y(&mut self) {
         todo!();
@@ -414,9 +418,7 @@ impl CPU<'_> {
 
     ld_zero_page_reg! {ldy_zero_page_x, y, x}
 
-    fn ldy_absolute(&mut self) {
-        todo!();
-    }
+    ld_absolute! {ldy_absolute, y}
 
     fn ldy_absolute_x(&mut self) {
         todo!();
@@ -959,7 +961,7 @@ mod tests {
 
     test_ld_zero_page_reg! {test_ldy_zero_page_x, y, LDY_ZP_X, x}
 
-    test_ld_absolute! {test_ldy_absolute, y, LDY_ZP}
+    test_ld_absolute! {test_ldy_absolute, y, LDY_ABS}
 
     test_ld_absolute_reg! {test_ldy_absolute_x, y, LDY_ABS_X, x}
 }
