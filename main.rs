@@ -793,34 +793,87 @@ mod tests {
                 let mut memory = Memory {
                     ..Default::default()
                 };
-        
+
                 cpu.reset();
                 let cpu_copy = cpu.clone();
-        
-                
+
                 let values = [0u8, 69, (!105u8 + 1)];
                 let addresses = [0xff, 0x69, 0x10];
-        
+
                 for i in 0..3 {
                     memory.write_byte(2 * i + 0, Instruction::$instr_name.into());
                     memory.write_byte(2 * i + 1, addresses[i as usize]);
                 }
-        
+
                 for i in 0..3 {
                     let pc = cpu.pc;
                     let cycles = cpu.cycles;
                     let address = addresses[i];
                     let value = values[i];
                     let instruction = cpu.fetch_instruction(&memory);
-        
+
                     cpu.$reg_name = value;
-        
+
                     cpu.execute(&mut memory, instruction);
-        
+
                     assert_eq!(memory.read_byte(address as u16), value);
-        
+
                     assert_eq!(cpu.pc, pc + 2);
                     assert_eq!(cpu.cycles, cycles + 3);
+                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
+                    assert_eq!(cpu.get_zero(), cpu_copy.get_zero());
+                    assert_eq!(
+                        cpu.get_interrupt_disable(),
+                        cpu_copy.get_interrupt_disable()
+                    );
+                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
+                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
+                    assert_eq!(cpu.get_negative(), cpu_copy.get_negative());
+                }
+            }
+        };
+    }
+
+    macro_rules! test_st_zero_page_reg {
+        ($func_name: ident, $reg_name: ident, $instr_name: ident, $addr_reg: ident) => {
+            #[test]
+            fn $func_name() {
+                let mut cpu = CPU {
+                    ..Default::default()
+                };
+                let mut memory = Memory {
+                    ..Default::default()
+                };
+
+                cpu.reset();
+                let cpu_copy = cpu.clone();
+
+                let values = [0u8, 69, (!105u8 + 1)];
+                let reg_addresses = [0x00, 0x34, 0xCD];
+                let addresses = [0xff, 0x35, 0x10];
+                let addresses_actual = [0xff, 0x69, 0xDD];
+
+                for i in 0..3 {
+                    memory.write_byte(2 * i + 0, Instruction::$instr_name.into());
+                    memory.write_byte(2 * i + 1, addresses[i as usize]);
+                }
+
+                for i in 0..3 {
+                    let pc = cpu.pc;
+                    let cycles = cpu.cycles;
+                    let value = values[i];
+                    let instruction = cpu.fetch_instruction(&memory);
+
+                    cpu.$addr_reg = reg_addresses[i];
+                    cpu.$reg_name = value;
+
+                    cpu.execute(&mut memory, instruction);
+
+                    assert_eq!(memory.read_byte(addresses_actual[i] as u16), value);
+
+                    assert_eq!(cpu.pc, pc + 2);
+                    assert_eq!(cpu.cycles, cycles + 4);
                     assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
                     assert_eq!(cpu.get_zero(), cpu_copy.get_zero());
                     assert_eq!(
@@ -991,7 +1044,7 @@ mod tests {
         let mut memory = Memory {
             ..Default::default()
         };
-        
+
         cpu.reset();
         let cpu_copy = cpu.clone();
 
@@ -1115,12 +1168,17 @@ mod tests {
     // STA
     test_st_zero_page! {test_sta_zero_page, a, STA_ZP}
 
+    test_st_zero_page_reg! {test_sta_zero_page_x, a, STA_ZP_X, x}
+
     // STX
     test_st_zero_page! {test_stx_zero_page, x, STX_ZP}
+
+    test_st_zero_page_reg! {test_stx_zero_page_y, x, STX_ZP_Y, y}
 
     // STY
     test_st_zero_page! {test_sty_zero_page, y, STY_ZP}
 
+    test_st_zero_page_reg! {test_sty_zero_page_x, y, STY_ZP_X, x}
 }
 
 fn main() {
