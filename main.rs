@@ -539,11 +539,25 @@ impl CPU {
     st_absolute_reg! {sta_absolute_y, a, y}
 
     fn sta_indirect_x(&mut self, memory: &mut Memory) {
-        todo!();
+        let address = memory.read_byte(self.pc);
+        let x_address = self.x;
+        let sum_address = self.add_mod_256(address, x_address);
+        let address_actual = memory.read_word(sum_address as u16);
+        memory.write_byte(address_actual, self.a);
+
+        self.pc += 1;
+        self.cycles += 6;
     }
 
     fn sta_indirect_y(&mut self, memory: &mut Memory) {
-        todo!();
+        let address = memory.read_byte(self.pc);
+        let y_address = self.y;
+        let zp_address = memory.read_word(address as u16);
+        let address_actual = zp_address + y_address as u16;
+        memory.write_byte(address_actual, self.a);
+
+        self.pc += 1;
+        self.cycles += 6;
     }
 }
 
@@ -1382,7 +1396,7 @@ mod tests {
         let addresses_actual = [0x1244, 0x43CC, 0x6969];
 
         for i in 0..3 {
-            memory.write_byte(2 * i + 0, Instruction::STA_IN_X.into());
+            memory.write_byte(2 * i + 0, Instruction::STA_IN_Y.into());
             memory.write_byte(2 * i + 1, instr_addresses[i as usize]);
             memory.write_word(instr_addresses[i as usize] as u16, zp_addresses[i as usize]);
         }
@@ -1399,7 +1413,7 @@ mod tests {
 
             cpu.execute(&mut memory, instruction);
 
-            assert_eq!(memory.read_byte(address as u16), value);
+            assert_eq!(memory.read_byte(address), value);
             assert_eq!(cpu.pc, pc + 2);
             assert_eq!(cpu.cycles, cycles + 6);
             assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
