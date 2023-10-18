@@ -513,6 +513,20 @@ macro_rules! st_absolute {
     };
 }
 
+macro_rules! st_absolute_reg {
+    ($func_name: ident, $reg_name: ident, $addr_reg: ident) => {
+        fn $func_name(&mut self, memory: &mut Memory) {
+            let address = memory.read_word(self.pc);
+            // TODO: make addition wrap around
+            let address_actual = address + self.$addr_reg as u16;
+            memory.write_byte(address_actual, self.$reg_name);
+
+            self.pc += 2;
+            self.cycles += 5;
+        }
+    };
+}
+
 impl CPU {
     st_zero_page! {sta_zero_page, a}
 
@@ -520,13 +534,9 @@ impl CPU {
 
     st_absolute! {sta_absolute, a}
 
-    fn sta_absolute_x(&mut self, memory: &mut Memory) {
-        todo!();
-    }
+    st_absolute_reg! {sta_absolute_x, a, x}
 
-    fn sta_absolute_y(&mut self, memory: &mut Memory) {
-        todo!();
-    }
+    st_absolute_reg! {sta_absolute_y, a, y}
 
     fn sta_indirect_x(&mut self, memory: &mut Memory) {
         todo!();
