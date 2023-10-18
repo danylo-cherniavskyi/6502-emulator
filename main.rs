@@ -1334,6 +1334,58 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_sta_indirect_y() {
+        let mut cpu = CPU {
+            ..Default::default()
+        };
+        let mut memory = Memory {
+            ..Default::default()
+        };
+
+        cpu.reset();
+        let cpu_copy = cpu.clone();
+
+        let values = [0u8, 69, (!105u8 + 1)];
+        let instr_addresses = [0x40, 0x10, 0xF0];
+        let y_addresses = [0x10, 0xAB, 0xF0];
+        let zp_addresses = [0x1234, 0x4321, 0x6879];
+        let addresses_actual = [0x1244, 0x43CC, 0x6969];
+
+        for i in 0..3 {
+            memory.write_byte(2 * i + 0, Instruction::STA_IN_X.into());
+            memory.write_byte(2 * i + 1, instr_addresses[i as usize]);
+            memory.write_word(instr_addresses[i as usize] as u16, zp_addresses[i as usize]);
+        }
+
+        for i in 0..3 {
+            let pc = cpu.pc;
+            let cycles = cpu.cycles;
+            let address = addresses_actual[i];
+            let value = values[i];
+            let instruction = cpu.fetch_instruction(&memory);
+
+            cpu.a = value;
+            cpu.y = y_addresses[i];
+
+            cpu.execute(&mut memory, instruction);
+
+            assert_eq!(memory.read_byte(address as u16), value);
+            assert_eq!(cpu.pc, pc + 2);
+            assert_eq!(cpu.cycles, cycles + 6);
+            assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
+            assert_eq!(cpu.get_zero(), cpu_copy.get_zero());
+            assert_eq!(
+                cpu.get_interrupt_disable(),
+                cpu_copy.get_interrupt_disable()
+            );
+            assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+            assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
+            assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
+            assert_eq!(cpu.get_negative(), cpu_copy.get_negative());
+        }
+    }
+
     // STX
     test_st_zero_page! {test_stx_zero_page, x, STX_ZP}
 
