@@ -488,16 +488,23 @@ macro_rules! st_zero_page {
     };
 }
 
-impl CPU {
-    // fn sta_zero_page(&mut self, memory: &mut Memory) {
-        
-    // }
+macro_rules! st_zero_page_reg {
+    ($func_name: ident, $reg_name: ident, $addr_reg: ident) => {
+        fn $func_name(&mut self, memory: &mut Memory) {
+            let address = memory.read_byte(self.pc);
+            let address_actual = self.add_mod_256(address, self.$addr_reg);
+            memory.write_byte(address_actual as u16, self.$reg_name);
 
+            self.pc += 1;
+            self.cycles += 4;
+        }
+    };
+}
+
+impl CPU {
     st_zero_page! {sta_zero_page, a}
 
-    fn sta_zero_page_x(&mut self, memory: &mut Memory) {
-        todo!();
-    }
+    st_zero_page_reg! {sta_zero_page_x, a, x}
 
     fn sta_absolute(&mut self, memory: &mut Memory) {
         todo!();
@@ -523,9 +530,7 @@ impl CPU {
 impl CPU {
     st_zero_page! {stx_zero_page, x}
 
-    fn stx_zero_page_y(&mut self, memory: &mut Memory) {
-        todo!();
-    }
+    st_zero_page_reg! {stx_zero_page_y, x, y}
 
     fn stx_absolute(&mut self, memory: &mut Memory) {
         todo!();
@@ -535,9 +540,7 @@ impl CPU {
 impl CPU {
     st_zero_page! {sty_zero_page, y}
 
-    fn sty_zero_page_x(&mut self, memory: &mut Memory) {
-        todo!();
-    }
+    st_zero_page_reg! {sty_zero_page_x, y, x}
 
     fn sty_absolute(&mut self, memory: &mut Memory) {
         todo!();
