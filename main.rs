@@ -301,21 +301,21 @@ impl CPU {
             Instruction::LDY_ABS_X => self.ldy_absolute_x(memory),
 
             // STA
-            Instruction::STA_ZP => self.sta_zero_page(),
-            Instruction::STA_ZP_X => self.sta_zero_page_x(),
-            Instruction::STA_ABS => self.sta_absolute(),
-            Instruction::STA_ABS_X => self.sta_absolute_x(),
-            Instruction::STA_ABS_Y => self.sta_absolute_y(),
-            Instruction::STA_IN_X => self.sta_indirect_x(),
-            Instruction::STA_IN_Y => self.sta_indirect_y(),
+            Instruction::STA_ZP => self.sta_zero_page(memory),
+            Instruction::STA_ZP_X => self.sta_zero_page_x(memory),
+            Instruction::STA_ABS => self.sta_absolute(memory),
+            Instruction::STA_ABS_X => self.sta_absolute_x(memory),
+            Instruction::STA_ABS_Y => self.sta_absolute_y(memory),
+            Instruction::STA_IN_X => self.sta_indirect_x(memory),
+            Instruction::STA_IN_Y => self.sta_indirect_y(memory),
             // STX
-            Instruction::STX_ZP => self.stx_zero_page(),
-            Instruction::STX_ZP_Y => self.stx_zero_page_y(),
-            Instruction::STX_ABS => self.stx_absolute(),
+            Instruction::STX_ZP => self.stx_zero_page(memory),
+            Instruction::STX_ZP_Y => self.stx_zero_page_y(memory),
+            Instruction::STX_ABS => self.stx_absolute(memory),
             // STY
-            Instruction::STY_ZP => self.sty_zero_page(),
-            Instruction::STY_ZP_X => self.sty_zero_page_x(),
-            Instruction::STY_ABS => self.sty_absolute(),
+            Instruction::STY_ZP => self.sty_zero_page(memory),
+            Instruction::STY_ZP_X => self.sty_zero_page_x(memory),
+            Instruction::STY_ABS => self.sty_absolute(memory),
 
             Instruction::INVALID => println!("Error: Invalid instruction"),
         }
@@ -476,60 +476,70 @@ impl CPU {
     ld_absolute_reg! {ldy_absolute_x, y, x}
 }
 
+macro_rules! st_zero_page {
+    ($func_name: ident, $reg_name: ident) => {
+        fn $func_name(&mut self, memory: &mut Memory) {
+            let address = memory.read_byte(self.pc);
+            memory.write_byte(address as u16, self.$reg_name);
+
+            self.pc += 1;
+            self.cycles += 3
+        }
+    };
+}
+
 impl CPU {
-    fn sta_zero_page(&mut self) {
+    // fn sta_zero_page(&mut self, memory: &mut Memory) {
+        
+    // }
+
+    st_zero_page! {sta_zero_page, a}
+
+    fn sta_zero_page_x(&mut self, memory: &mut Memory) {
         todo!();
     }
 
-    fn sta_zero_page_x(&mut self) {
+    fn sta_absolute(&mut self, memory: &mut Memory) {
         todo!();
     }
 
-    fn sta_absolute(&mut self) {
+    fn sta_absolute_x(&mut self, memory: &mut Memory) {
         todo!();
     }
 
-    fn sta_absolute_x(&mut self) {
+    fn sta_absolute_y(&mut self, memory: &mut Memory) {
         todo!();
     }
 
-    fn sta_absolute_y(&mut self) {
+    fn sta_indirect_x(&mut self, memory: &mut Memory) {
         todo!();
     }
 
-    fn sta_indirect_x(&mut self) {
-        todo!();
-    }
-
-    fn sta_indirect_y(&mut self) {
+    fn sta_indirect_y(&mut self, memory: &mut Memory) {
         todo!();
     }
 }
 
 impl CPU {
-    fn stx_zero_page(&mut self) {
+    st_zero_page! {stx_zero_page, x}
+
+    fn stx_zero_page_y(&mut self, memory: &mut Memory) {
         todo!();
     }
 
-    fn stx_zero_page_y(&mut self) {
-        todo!();
-    }
-
-    fn stx_absolute(&mut self) {
+    fn stx_absolute(&mut self, memory: &mut Memory) {
         todo!();
     }
 }
 
 impl CPU {
-    fn sty_zero_page(&mut self) {
+    st_zero_page! {sty_zero_page, y}
+
+    fn sty_zero_page_x(&mut self, memory: &mut Memory) {
         todo!();
     }
 
-    fn sty_zero_page_x(&mut self) {
-        todo!();
-    }
-
-    fn sty_absolute(&mut self) {
+    fn sty_absolute(&mut self, memory: &mut Memory) {
         todo!();
     }
 }
