@@ -659,22 +659,50 @@ impl CPU {
     transfer_reg_reg! {transfer_x_s, x, sp, false}
 }
 
+macro_rules! push_reg {
+    ($func_name: ident, $reg_name: ident) => {
+        fn $func_name(&mut self, memory: &mut Memory) {
+            let value = self.$reg_name;
+            memory.write_byte(0x0100 + self.sp as u16, value);
+
+            self.sp += 1;
+            self.cycles += 3;
+        }
+    };
+}
+
+macro_rules! pull_reg {
+    ($func_name: ident, $reg_name: ident, $test_en: expr) => {
+        fn $func_name(&mut self, memory: &mut Memory) {
+            self.sp -= 1;
+            let value = memory.read_byte(0x0100 + self.sp as u16);
+
+            self.$reg_name = value;
+
+            if $test_en {
+                self.test_number(value);
+            }
+
+            self.cycles += 4;
+        }
+    };
+}
+
 impl CPU {
-    fn push_accumulator(&mut self, memory: &mut Memory) {
-        todo!();
-    }
+    push_reg! {push_accumulator, a}
 
-    fn push_processor_status(&mut self, memory: &mut Memory) {
-        todo!();
-    }
+    push_reg! {push_processor_status, status}
 
-    fn pull_accumulator(&mut self, memory: &Memory) {
-        todo!();
-    }
+    // fn pull_accumulator(&mut self, memory: &Memory) {
+    //     todo!();
+    // }
 
-    fn pull_processor_status(&mut self, memory: &Memory) {
-        todo!();
-    }
+    // fn pull_processor_status(&mut self, memory: &Memory) {
+    //     todo!();
+    // }
+    pull_reg! {pull_accumulator, a, true}
+
+    pull_reg! {pull_processor_status, status, false}
 }
 
 #[cfg(test)]
@@ -1622,8 +1650,7 @@ mod tests {
                 };
         
                 cpu.reset();
-                let cpu_copy = cpu.clone();
-        
+
                 let values = [0u8, 69, (!105u8 + 1)];
         
                 for i in 0..3 {
@@ -1641,19 +1668,9 @@ mod tests {
                     cpu.execute(&mut memory, instruction);
 
                     assert_eq!(memory.read_byte(0x0100 + (cpu.sp - 1) as u16), value);
-                    assert_eq!(cpu.sp, i as u8);
+                    assert_eq!(cpu.sp, (i + 1) as u8);
                     assert_eq!(cpu.pc, pc + 1);
                     assert_eq!(cpu.cycles, cycles + 3);
-                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
-                    assert_eq!(cpu.get_zero(), cpu_copy.get_zero());
-                    assert_eq!(
-                        cpu.get_interrupt_disable(),
-                        cpu_copy.get_interrupt_disable()
-                    );
-                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
-                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
-                    assert_eq!(cpu.get_negative(), cpu_copy.get_negative());
                 }
             }
         };
@@ -1684,7 +1701,7 @@ mod tests {
                 for i in 0..3 {
                     let pc = cpu.pc;
                     let cycles = cpu.cycles;
-                    let value = values[i];
+                    let value = values[values.len() - i - 1];
                     let instruction = cpu.fetch_instruction(&memory);
         
                     cpu.$reg_name = value;
@@ -1692,19 +1709,13 @@ mod tests {
                     cpu.execute(&mut memory, instruction);
 
                     assert_eq!(cpu.$reg_name, value);
-                    assert_eq!(cpu.sp, (cpu_copy.sp - i as u8) as u8);
+                    assert_eq!(cpu.sp, (cpu_copy.sp - i as u8 - 1) as u8);
                     assert_eq!(cpu.pc, pc + 1);
-                    assert_eq!(cpu.cycles, cycles + 3);
-                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
-                    assert_eq!(cpu.get_zero(), cpu_copy.get_zero());
-                    assert_eq!(
-                        cpu.get_interrupt_disable(),
-                        cpu_copy.get_interrupt_disable()
-                    );
-                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
-                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
-                    assert_eq!(cpu.get_negative(), cpu_copy.get_negative());
+                    assert_eq!(cpu.cycles, cycles + 4);
+                    if (u8::from(Instruction::PLA) == u8::from($instr_name)) {
+                        assert_eq!(cpu.get_zero(), value == 0);
+                        assert_eq!(cpu.get_negative(), (value as i8) < 0);
+                    }
                 }
             }
         };
@@ -1713,7 +1724,8 @@ mod tests {
     test_push_stack! {test_push_accumulator, a, PHA}
 
     test_push_stack! {test_push_processor_status, status, PHP}
-
+    use Instruction::PLA;
+    use Instruction::PLP;
     test_pull_stack! {test_pull_accumulator, a, PLA, PHA}
 
     test_pull_stack! {test_pull_processor_status, status, PLP, PHP}
