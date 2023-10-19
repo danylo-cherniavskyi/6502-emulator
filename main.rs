@@ -85,6 +85,12 @@ pub enum Instruction {
     TSX,
     TXS,
 
+    // STACK
+    PHA,
+    PHP,
+    PLA,
+    PLP,
+
     INVALID,
 }
 
@@ -135,6 +141,11 @@ impl From<u8> for Instruction {
             0x98 => Instruction::TYA,
             0xBA => Instruction::TSX,
             0x9A => Instruction::TXS,
+            // Stack
+            0x48 => Instruction::PHA,
+            0x08 => Instruction::PHP,
+            0x68 => Instruction::PLA,
+            0x28 => Instruction::PLP,
 
             _ => Instruction::INVALID,
         }
@@ -189,6 +200,11 @@ impl From<Instruction> for u8 {
             Instruction::TYA => 0x98,
             Instruction::TSX => 0xBA,
             Instruction::TXS => 0x9A,
+            // Stack
+            Instruction::PHA => 0x48,
+            Instruction::PHP => 0x08,
+            Instruction::PLA => 0x68,
+            Instruction::PLP => 0x28,
 
             Instruction::INVALID => 0xFF,
         }
@@ -345,6 +361,11 @@ impl CPU {
             Instruction::TYA => self.transfer_y_a(),
             Instruction::TSX => self.transfer_s_x(),
             Instruction::TXS => self.transfer_x_s(),
+
+            Instruction::PHA => self.push_accumulator(memory),
+            Instruction::PHP => self.push_processor_status(memory),
+            Instruction::PLA => self.pull_accumulator(memory),
+            Instruction::PLP => self.pull_processor_status(memory),
 
             Instruction::INVALID => println!("Error: Invalid instruction"),
         }
@@ -636,6 +657,24 @@ impl CPU {
     transfer_reg_reg! {transfer_s_x, sp, x, true}
 
     transfer_reg_reg! {transfer_x_s, x, sp, false}
+}
+
+impl CPU {
+    fn push_accumulator(&mut self, memory: &mut Memory) {
+        todo!();
+    }
+
+    fn push_processor_status(&mut self, memory: &mut Memory) {
+        todo!();
+    }
+
+    fn pull_accumulator(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn pull_processor_status(&mut self, memory: &Memory) {
+        todo!();
+    }
 }
 
 #[cfg(test)]
