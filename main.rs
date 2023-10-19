@@ -77,6 +77,14 @@ pub enum Instruction {
     STY_ZP_X,
     STY_ABS,
 
+    // TRANSFER
+    TAX,
+    TAY,
+    TXA,
+    TYA,
+    TSX,
+    TXS,
+
     INVALID,
 }
 
@@ -120,6 +128,13 @@ impl From<u8> for Instruction {
             0x84 => Instruction::STY_ZP,
             0x94 => Instruction::STY_ZP_X,
             0x8C => Instruction::STY_ABS,
+            // Transfer
+            0xAA => Instruction::TAX,
+            0xA8 => Instruction::TAY,
+            0x8A => Instruction::TXA,
+            0x98 => Instruction::TYA,
+            0xBA => Instruction::TSX,
+            0x9A => Instruction::TXS,
 
             _ => Instruction::INVALID,
         }
@@ -167,6 +182,13 @@ impl From<Instruction> for u8 {
             Instruction::STY_ZP => 0x84,
             Instruction::STY_ZP_X => 0x94,
             Instruction::STY_ABS => 0x8C,
+            // Transfer
+            Instruction::TAX => 0xAA,
+            Instruction::TAY => 0xA8,
+            Instruction::TXA => 0x8A,
+            Instruction::TYA => 0x98,
+            Instruction::TSX => 0xBA,
+            Instruction::TXS => 0x9A,
 
             Instruction::INVALID => 0xFF,
         }
@@ -316,6 +338,13 @@ impl CPU {
             Instruction::STY_ZP => self.sty_zero_page(memory),
             Instruction::STY_ZP_X => self.sty_zero_page_x(memory),
             Instruction::STY_ABS => self.sty_absolute(memory),
+            // Transfer
+            Instruction::TAX => self.transfer_a_x(),
+            Instruction::TAY => self.transfer_a_y(),
+            Instruction::TXA => self.transfer_x_a(),
+            Instruction::TYA => self.transfer_y_a(),
+            Instruction::TSX => self.transfer_s_x(),
+            Instruction::TXS => self.transfer_x_s(),
 
             Instruction::INVALID => println!("Error: Invalid instruction"),
         }
@@ -579,6 +608,32 @@ impl CPU {
     st_zero_page_reg! {sty_zero_page_x, y, x}
 
     st_absolute! {sty_absolute, y}
+}
+
+impl CPU {
+    fn transfer_a_x(&mut self) {
+        todo!();
+    }
+
+    fn transfer_a_y(&mut self) {
+        todo!();
+    }
+
+    fn transfer_x_a(&mut self) {
+        todo!();
+    }
+
+    fn transfer_y_a(&mut self) {
+        todo!();
+    }
+
+    fn transfer_x_s(&mut self) {
+        todo!();
+    }
+
+    fn transfer_s_x(&mut self) {
+        todo!();
+    }
 }
 
 #[cfg(test)]
