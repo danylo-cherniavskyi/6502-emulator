@@ -610,30 +610,32 @@ impl CPU {
     st_absolute! {sty_absolute, y}
 }
 
+macro_rules! transfer_reg_reg {
+    ($func_name: ident, $reg_src: ident, $reg_dest: ident, $test_en: expr) => {
+        fn $func_name(&mut self) {
+            let value = self.$reg_src;
+            self.$reg_dest = value;
+
+            if $test_en {
+                self.test_number(value);
+            }
+            self.cycles += 2;
+        }
+    };
+}
+
 impl CPU {
-    fn transfer_a_x(&mut self) {
-        todo!();
-    }
+    transfer_reg_reg! {transfer_a_x, a, x, true}
 
-    fn transfer_a_y(&mut self) {
-        todo!();
-    }
+    transfer_reg_reg! {transfer_a_y, a, y, true}
 
-    fn transfer_x_a(&mut self) {
-        todo!();
-    }
+    transfer_reg_reg! {transfer_x_a, x, a, true}
 
-    fn transfer_y_a(&mut self) {
-        todo!();
-    }
+    transfer_reg_reg! {transfer_y_a, y, a, true}
 
-    fn transfer_x_s(&mut self) {
-        todo!();
-    }
+    transfer_reg_reg! {transfer_s_x, sp, x, true}
 
-    fn transfer_s_x(&mut self) {
-        todo!();
-    }
+    transfer_reg_reg! {transfer_x_s, x, sp, false}
 }
 
 #[cfg(test)]
