@@ -390,7 +390,7 @@ macro_rules! ld_absolute_reg {
         fn $func_name(&mut self, memory: &Memory) {
             let instruction_address = memory.read_word(self.pc);
             let reg_address = self.$addr_reg;
-            let address = instruction_address + reg_address as u16;
+            let address = self.add_mod_65536(instruction_address, reg_address as u16);
             let value = memory.read_byte(address);
             self.$reg_name = value;
             self.test_number(value);
@@ -431,7 +431,7 @@ impl CPU {
         let instruction_address = memory.read_byte(self.pc);
         let y_address = self.y;
         let address_zp = memory.read_word(instruction_address as u16);
-        let actual_address = address_zp + y_address as u16;
+        let actual_address = self.add_mod_65536(address_zp, y_address as u16);
         let value = memory.read_byte(actual_address);
         self.a = value;
         self.test_number(value);
@@ -443,6 +443,11 @@ impl CPU {
     fn add_mod_256(&mut self, n1: u8, n2: u8) -> u8 {
         let sum = ((n1 as u16 + n2 as u16) % 256) as u8;
         return sum;
+    }
+
+    fn add_mod_65536(&mut self, n1: u16, n2: u16) -> u16 {
+        let sum = (n1 as u32 + n2 as u32) % (0xffff + 1);
+        return sum as u16;
     }
 
     // Sets flags based on number passed
@@ -517,8 +522,7 @@ macro_rules! st_absolute_reg {
     ($func_name: ident, $reg_name: ident, $addr_reg: ident) => {
         fn $func_name(&mut self, memory: &mut Memory) {
             let address = memory.read_word(self.pc);
-            // TODO: make addition wrap around
-            let address_actual = address + self.$addr_reg as u16;
+            let address_actual = self.add_mod_65536(address, self.$addr_reg as u16);
             memory.write_byte(address_actual, self.$reg_name);
 
             self.pc += 2;
@@ -553,7 +557,7 @@ impl CPU {
         let address = memory.read_byte(self.pc);
         let y_address = self.y;
         let zp_address = memory.read_word(address as u16);
-        let address_actual = zp_address + y_address as u16;
+        let address_actual = self.add_mod_65536(zp_address, y_address as u16);
         memory.write_byte(address_actual, self.a);
 
         self.pc += 1;
