@@ -1608,6 +1608,115 @@ mod tests {
     test_transfer_reg_reg! {test_transfer_s_x, sp, x, TSX, true}
 
     test_transfer_reg_reg! {test_transfer_x_s, x, sp, TXS, false}
+
+    // Stack
+    macro_rules! test_push_stack {
+        ($func_name: ident, $reg_name: ident, $instr_name: ident) => {
+            #[test]
+            fn $func_name() {
+                let mut cpu = CPU {
+                    ..Default::default()
+                };
+                let mut memory = Memory {
+                    ..Default::default()
+                };
+        
+                cpu.reset();
+                let cpu_copy = cpu.clone();
+        
+                let values = [0u8, 69, (!105u8 + 1)];
+        
+                for i in 0..3 {
+                    memory.write_byte(i, Instruction::$instr_name.into());
+                }
+        
+                for i in 0..3 {
+                    let pc = cpu.pc;
+                    let cycles = cpu.cycles;
+                    let value = values[i];
+                    let instruction = cpu.fetch_instruction(&memory);
+        
+                    cpu.$reg_name = value;
+
+                    cpu.execute(&mut memory, instruction);
+
+                    assert_eq!(memory.read_byte(0x0100 + (cpu.sp - 1) as u16), value);
+                    assert_eq!(cpu.sp, i as u8);
+                    assert_eq!(cpu.pc, pc + 1);
+                    assert_eq!(cpu.cycles, cycles + 3);
+                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
+                    assert_eq!(cpu.get_zero(), cpu_copy.get_zero());
+                    assert_eq!(
+                        cpu.get_interrupt_disable(),
+                        cpu_copy.get_interrupt_disable()
+                    );
+                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
+                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
+                    assert_eq!(cpu.get_negative(), cpu_copy.get_negative());
+                }
+            }
+        };
+    }
+
+    macro_rules! test_pull_stack {
+        ($func_name: ident, $reg_name: ident, $instr_name: ident, $instr_push_name: ident) => {
+            #[test]
+            fn $func_name() {
+                let mut cpu = CPU {
+                    ..Default::default()
+                };
+                let mut memory = Memory {
+                    ..Default::default()
+                };
+        
+                cpu.reset();
+                
+                let values = [0u8, 69, (!105u8 + 1)];
+                
+                for i in 0..3 {
+                    memory.write_byte(i, Instruction::$instr_name.into());
+                    cpu.$reg_name = values[i as usize];
+                    cpu.execute(&mut memory, Instruction::$instr_push_name.into());
+                }
+                let cpu_copy = cpu.clone();
+                
+                for i in 0..3 {
+                    let pc = cpu.pc;
+                    let cycles = cpu.cycles;
+                    let value = values[i];
+                    let instruction = cpu.fetch_instruction(&memory);
+        
+                    cpu.$reg_name = value;
+
+                    cpu.execute(&mut memory, instruction);
+
+                    assert_eq!(cpu.$reg_name, value);
+                    assert_eq!(cpu.sp, (cpu_copy.sp - i as u8) as u8);
+                    assert_eq!(cpu.pc, pc + 1);
+                    assert_eq!(cpu.cycles, cycles + 3);
+                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
+                    assert_eq!(cpu.get_zero(), cpu_copy.get_zero());
+                    assert_eq!(
+                        cpu.get_interrupt_disable(),
+                        cpu_copy.get_interrupt_disable()
+                    );
+                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
+                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
+                    assert_eq!(cpu.get_negative(), cpu_copy.get_negative());
+                }
+            }
+        };
+    }
+
+    test_push_stack! {test_push_accumulator, a, PHA}
+
+    test_push_stack! {test_push_processor_status, status, PHP}
+
+    test_pull_stack! {test_pull_accumulator, a, PLA, PHA}
+
+    test_pull_stack! {test_pull_processor_status, status, PLP, PHP}
 }
 
 fn main() {
