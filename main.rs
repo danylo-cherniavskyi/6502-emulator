@@ -1501,6 +1501,72 @@ mod tests {
     test_st_zero_page_reg! {test_sty_zero_page_x, y, STY_ZP_X, x}
 
     test_st_absolute! {test_sty_absolute, y, STY_ABS}
+
+    // Transfer
+    macro_rules! test_transfer_reg_reg {
+        ($func_name: ident, $reg_src: ident, $reg_dest: ident, $instr_name: ident, $test_flags_en: expr) => {
+            #[test]
+            fn $func_name() {
+                let mut cpu = CPU {
+                    ..Default::default()
+                };
+                let mut memory = Memory {
+                    ..Default::default()
+                };
+        
+                cpu.reset();
+                let cpu_copy = cpu.clone();
+        
+                let values = [0u8, 69, (!105u8 + 1)];
+        
+                for i in 0..3 {
+                    memory.write_byte(i, Instruction::$instr_name.into());
+                }
+        
+                for i in 0..3 {
+                    let pc = cpu.pc;
+                    let cycles = cpu.cycles;
+                    let value = values[i];
+                    let instruction = cpu.fetch_instruction(&memory);
+        
+                    cpu.$reg_src = value;
+        
+                    cpu.execute(&mut memory, instruction);
+        
+                    assert_eq!(cpu.$reg_dest, value);
+                    assert_eq!(cpu.pc, pc + 1);
+                    assert_eq!(cpu.cycles, cycles + 2);
+                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
+                    assert_eq!(
+                        cpu.get_interrupt_disable(),
+                        cpu_copy.get_interrupt_disable()
+                    );
+                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
+                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
+                    if $test_flags_en {
+                        assert_eq!(cpu.get_zero(), value == 0);
+                        assert_eq!(cpu.get_negative(), (value as i8) < 0);
+                    } else {
+                        assert_eq!(cpu.get_zero(), cpu_copy.get_zero());
+                        assert_eq!(cpu.get_negative(), cpu_copy.get_negative());
+                    }
+                }
+            }
+        };
+    }
+    
+    test_transfer_reg_reg! {test_transfer_a_x, a, x, TAX, true}
+    
+    test_transfer_reg_reg! {test_transfer_a_y, a, y, TAY, true}
+
+    test_transfer_reg_reg! {test_transfer_x_a, x, a, TXA, true}
+
+    test_transfer_reg_reg! {test_transfer_y_a, y, a, TYA, true}
+
+    test_transfer_reg_reg! {test_transfer_s_x, sp, x, TSX, true}
+
+    test_transfer_reg_reg! {test_transfer_x_s, x, sp, TXS, false}
 }
 
 fn main() {
