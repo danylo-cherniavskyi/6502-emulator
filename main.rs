@@ -110,6 +110,15 @@ pub enum Instruction {
     EOR_ABS_Y,
     EOR_IN_X,
     EOR_IN_Y,
+    // OR
+    ORA_IM,
+    ORA_ZP,
+    ORA_ZP_X,
+    ORA_ABS,
+    ORA_ABS_X,
+    ORA_ABS_Y,
+    ORA_IN_X,
+    ORA_IN_Y,
 
     INVALID,
 }
@@ -185,6 +194,16 @@ impl From<u8> for Instruction {
             0x59 => Instruction::EOR_ABS_Y,
             0x41 => Instruction::EOR_IN_X,
             0x51 => Instruction::EOR_IN_Y,
+            // Or
+            0x09 => Instruction::ORA_IM,
+            0x05 => Instruction::ORA_ZP,
+            0x15 => Instruction::ORA_ZP_X,
+            0x0D => Instruction::ORA_ABS,
+            0x1D => Instruction::ORA_ABS_X,
+            0x19 => Instruction::ORA_ABS_Y,
+            0x01 => Instruction::ORA_IN_X,
+            0x11 => Instruction::ORA_IN_Y,
+
 
             _ => Instruction::INVALID,
         }
@@ -263,6 +282,15 @@ impl From<Instruction> for u8 {
             Instruction::EOR_ABS_Y => 0x59,
             Instruction::EOR_IN_X => 0x41,
             Instruction::EOR_IN_Y => 0x51,
+            // Or
+            Instruction::ORA_IM => 0x09,
+            Instruction::ORA_ZP => 0x05,
+            Instruction::ORA_ZP_X => 0x15,
+            Instruction::ORA_ABS => 0x0D,
+            Instruction::ORA_ABS_X => 0x1D,
+            Instruction::ORA_ABS_Y => 0x19,
+            Instruction::ORA_IN_X => 0x01,
+            Instruction::ORA_IN_Y => 0x11,
 
             Instruction::INVALID => 0xFF,
         }
@@ -443,6 +471,15 @@ impl CPU {
             Instruction::EOR_ABS_Y => self.eor_absolute_y(memory),
             Instruction::EOR_IN_X => self.eor_indirect_x(memory),
             Instruction::EOR_IN_Y => self.eor_indirect_y(memory),
+            // Or
+            Instruction::ORA_IM => self.ora_immediate(memory),
+            Instruction::ORA_ZP => self.ora_zero_page(memory),
+            Instruction::ORA_ZP_X => self.ora_zero_page_x(memory),
+            Instruction::ORA_ABS => self.ora_absolute(memory),
+            Instruction::ORA_ABS_X => self.ora_absolute_x(memory),
+            Instruction::ORA_ABS_Y => self.ora_absolute_y(memory),
+            Instruction::ORA_IN_X => self.ora_indirect_x(memory),
+            Instruction::ORA_IN_Y => self.ora_indirect_y(memory),
 
             Instruction::INVALID => println!("Error: Invalid instruction"),
         }
@@ -837,6 +874,38 @@ impl CPU {
     }
 
     fn eor_indirect_y(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn ora_immediate(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn ora_zero_page(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn ora_zero_page_x(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn ora_absolute(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn ora_absolute_x(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn ora_absolute_y(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn ora_indirect_x(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn ora_indirect_y(&mut self, memory: &Memory) {
         todo!();
     }
 }
