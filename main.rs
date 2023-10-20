@@ -101,6 +101,15 @@ pub enum Instruction {
     AND_ABS_Y,
     AND_IN_X,
     AND_IN_Y,
+    // EXCLUSIVE OR
+    EOR_IM,
+    EOR_ZP,
+    EOR_ZP_X,
+    EOR_ABS,
+    EOR_ABS_X,
+    EOR_ABS_Y,
+    EOR_IN_X,
+    EOR_IN_Y,
 
     INVALID,
 }
@@ -167,6 +176,15 @@ impl From<u8> for Instruction {
             0x39 => Instruction::AND_ABS_Y,
             0x21 => Instruction::AND_IN_X,
             0x31 => Instruction::AND_IN_Y,
+            // Exclusive Or
+            0x49 => Instruction::EOR_IM,
+            0x45 => Instruction::EOR_ZP,
+            0x55 => Instruction::EOR_ZP_X,
+            0x4D => Instruction::EOR_ABS,
+            0x5D => Instruction::EOR_ABS_X,
+            0x59 => Instruction::EOR_ABS_Y,
+            0x41 => Instruction::EOR_IN_X,
+            0x51 => Instruction::EOR_IN_Y,
 
             _ => Instruction::INVALID,
         }
@@ -236,6 +254,15 @@ impl From<Instruction> for u8 {
             Instruction::AND_ABS_Y => 0x39,
             Instruction::AND_IN_X => 0x21,
             Instruction::AND_IN_Y => 0x31,
+            // Exclusive Or
+            Instruction::EOR_IM => 0x49,
+            Instruction::EOR_ZP => 0x45,
+            Instruction::EOR_ZP_X => 0x55,
+            Instruction::EOR_ABS => 0x4D,
+            Instruction::EOR_ABS_X => 0x5D,
+            Instruction::EOR_ABS_Y => 0x59,
+            Instruction::EOR_IN_X => 0x41,
+            Instruction::EOR_IN_Y => 0x51,
 
             Instruction::INVALID => 0xFF,
         }
@@ -407,6 +434,15 @@ impl CPU {
             Instruction::AND_ABS_Y => self.and_absolute_y(memory),
             Instruction::AND_IN_X => self.and_indirect_x(memory),
             Instruction::AND_IN_Y => self.and_indirect_y(memory),
+            // Exclusive Or
+            Instruction::EOR_IM => self.eor_immediate(memory),
+            Instruction::EOR_ZP => self.eor_zero_page(memory),
+            Instruction::EOR_ZP_X => self.eor_zero_page_x(memory),
+            Instruction::EOR_ABS => self.eor_absolute(memory),
+            Instruction::EOR_ABS_X => self.eor_absolute_x(memory),
+            Instruction::EOR_ABS_Y => self.eor_absolute_y(memory),
+            Instruction::EOR_IN_X => self.eor_indirect_x(memory),
+            Instruction::EOR_IN_Y => self.eor_indirect_y(memory),
 
             Instruction::INVALID => println!("Error: Invalid instruction"),
         }
@@ -769,6 +805,38 @@ impl CPU {
     }
 
     fn and_indirect_y(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn eor_immediate(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn eor_zero_page(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn eor_zero_page_x(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn eor_absolute(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn eor_absolute_x(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn eor_absolute_y(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn eor_indirect_x(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn eor_indirect_y(&mut self, memory: &Memory) {
         todo!();
     }
 }
