@@ -119,6 +119,9 @@ pub enum Instruction {
     ORA_ABS_Y,
     ORA_IN_X,
     ORA_IN_Y,
+    // BIT TEST
+    BIT_ZP,
+    BIT_ABS,
 
     INVALID,
 }
@@ -203,7 +206,9 @@ impl From<u8> for Instruction {
             0x19 => Instruction::ORA_ABS_Y,
             0x01 => Instruction::ORA_IN_X,
             0x11 => Instruction::ORA_IN_Y,
-
+            // Bit
+            0x24 => Instruction::BIT_ZP,
+            0x2C => Instruction::BIT_ABS,
 
             _ => Instruction::INVALID,
         }
@@ -291,6 +296,9 @@ impl From<Instruction> for u8 {
             Instruction::ORA_ABS_Y => 0x19,
             Instruction::ORA_IN_X => 0x01,
             Instruction::ORA_IN_Y => 0x11,
+            // Bit
+            Instruction::BIT_ZP => 0x24,
+            Instruction::BIT_ABS => 0x2C,
 
             Instruction::INVALID => 0xFF,
         }
@@ -480,6 +488,9 @@ impl CPU {
             Instruction::ORA_ABS_Y => self.ora_absolute_y(memory),
             Instruction::ORA_IN_X => self.ora_indirect_x(memory),
             Instruction::ORA_IN_Y => self.ora_indirect_y(memory),
+            // Bit
+            Instruction::BIT_ZP => self.bit_zero_page(memory),
+            Instruction::BIT_ABS => self.bit_absolute(memory),
 
             Instruction::INVALID => println!("Error: Invalid instruction"),
         }
@@ -906,6 +917,14 @@ impl CPU {
     }
 
     fn ora_indirect_y(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn bit_zero_page(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn bit_absolute(&mut self, memory: &Memory) {
         todo!();
     }
 }
