@@ -91,6 +91,17 @@ pub enum Instruction {
     PLA,
     PLP,
 
+    // LOGICAL
+    // AND
+    AND_IM,
+    AND_ZP,
+    AND_ZP_X,
+    AND_ABS,
+    AND_ABS_X,
+    AND_ABS_Y,
+    AND_IN_X,
+    AND_IN_Y,
+
     INVALID,
 }
 
@@ -146,6 +157,16 @@ impl From<u8> for Instruction {
             0x08 => Instruction::PHP,
             0x68 => Instruction::PLA,
             0x28 => Instruction::PLP,
+            // Logical
+            // And
+            0x29 => Instruction::AND_IM,
+            0x25 => Instruction::AND_ZP,
+            0x35 => Instruction::AND_ZP_X,
+            0x2D => Instruction::AND_ABS,
+            0x3D => Instruction::AND_ABS_X,
+            0x39 => Instruction::AND_ABS_Y,
+            0x21 => Instruction::AND_IN_X,
+            0x31 => Instruction::AND_IN_Y,
 
             _ => Instruction::INVALID,
         }
@@ -205,6 +226,16 @@ impl From<Instruction> for u8 {
             Instruction::PHP => 0x08,
             Instruction::PLA => 0x68,
             Instruction::PLP => 0x28,
+            // Logical
+            // And
+            Instruction::AND_IM => 0x29,
+            Instruction::AND_ZP => 0x25,
+            Instruction::AND_ZP_X => 0x35,
+            Instruction::AND_ABS => 0x2D,
+            Instruction::AND_ABS_X => 0x3D,
+            Instruction::AND_ABS_Y => 0x39,
+            Instruction::AND_IN_X => 0x21,
+            Instruction::AND_IN_Y => 0x31,
 
             Instruction::INVALID => 0xFF,
         }
@@ -361,11 +392,21 @@ impl CPU {
             Instruction::TYA => self.transfer_y_a(),
             Instruction::TSX => self.transfer_s_x(),
             Instruction::TXS => self.transfer_x_s(),
-
+            // Stack
             Instruction::PHA => self.push_accumulator(memory),
             Instruction::PHP => self.push_processor_status(memory),
             Instruction::PLA => self.pull_accumulator(memory),
             Instruction::PLP => self.pull_processor_status(memory),
+            // Logical
+            // And
+            Instruction::AND_IM => self.and_immediate(memory),
+            Instruction::AND_ZP => self.and_zero_page(memory),
+            Instruction::AND_ZP_X => self.and_zero_page_x(memory),
+            Instruction::AND_ABS => self.and_absolute(memory),
+            Instruction::AND_ABS_X => self.and_absolute_x(memory),
+            Instruction::AND_ABS_Y => self.and_absolute_y(memory),
+            Instruction::AND_IN_X => self.and_indirect_x(memory),
+            Instruction::AND_IN_Y => self.and_indirect_y(memory),
 
             Instruction::INVALID => println!("Error: Invalid instruction"),
         }
@@ -693,16 +734,43 @@ impl CPU {
 
     push_reg! {push_processor_status, status}
 
-    // fn pull_accumulator(&mut self, memory: &Memory) {
-    //     todo!();
-    // }
-
-    // fn pull_processor_status(&mut self, memory: &Memory) {
-    //     todo!();
-    // }
     pull_reg! {pull_accumulator, a, true}
 
     pull_reg! {pull_processor_status, status, false}
+}
+
+impl CPU {
+    fn and_immediate(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn and_zero_page(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn and_zero_page_x(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn and_absolute(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn and_absolute_x(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn and_absolute_y(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn and_indirect_x(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn and_indirect_y(&mut self, memory: &Memory) {
+        todo!();
+    }
 }
 
 #[cfg(test)]
