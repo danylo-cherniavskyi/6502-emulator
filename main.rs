@@ -931,6 +931,8 @@ impl CPU {
 
 #[cfg(test)]
 mod tests {
+    use std::iter::zip;
+
     use super::*;
 
     macro_rules! test_ld_immediate {
@@ -1953,6 +1955,113 @@ mod tests {
     test_pull_stack! {test_pull_accumulator, a, PLA, PHA}
 
     test_pull_stack! {test_pull_processor_status, status, PLP, PHP}
+
+    // Logical
+
+    macro_rules! test_logic_immediate {
+        ($func_name: ident, $op_func: expr, $instr_name: ident) => {
+            #[test]
+            fn $func_name() {
+                let mut cpu = CPU {
+                    ..Default::default()
+                };
+                let mut memory = Memory {
+                    ..Default::default()
+                };
+        
+                cpu.reset();
+        
+                let values1    = [0b0000_0000u8, 0b1111_1111, 0b0000_1111];
+                let values2    = [0b1111_1111u8, 0b0101_0101, 0b0011_0011];
+                let values_res: Vec<u8> = zip(values1, values2).map(|pair| $op_func(pair.0, pair.1)).collect();
+            
+                for i in 0..3 {
+                    memory.write_byte(2 * i, Instruction::AND_IM.into());
+                    memory.write_byte(2 * i + 1, values2[i as usize]);
+                }
+        
+                let cpu_copy = cpu.clone();
+        
+                for i in 0..3 {
+                    let pc = cpu.pc;
+                    let cycles = cpu.cycles;
+                    let value = values_res[i];
+                    let instruction = cpu.fetch_instruction(&memory);
+        
+                    cpu.a = values1[i];
+        
+                    cpu.execute(&mut memory, instruction);
+        
+                    assert_eq!(cpu.a, value);
+                    assert_eq!(cpu.pc, pc + 2);
+                    assert_eq!(cpu.cycles, cycles + 2);
+                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
+                    assert_eq!(cpu.get_zero(), value == 0);
+                    assert_eq!(
+                        cpu.get_interrupt_disable(),
+                        cpu_copy.get_interrupt_disable()
+                    );
+                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
+                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
+                    assert_eq!(cpu.get_negative(), (value as i8) < 0);
+                }
+            }
+        };
+    }
+
+    test_logic_immediate! {test_and_immediate, |n1, n2| n1 & n2, AND_IM}
+    test_logic_immediate! {test_eor_immediate, |n1, n2| n1 ^ n2, EOR_IM}
+    test_logic_immediate! {test_ora_immediate, |n1, n2| n1 | n2, ORA_IM}
+
+    // #[test]
+    // fn test_and_immediate() {
+    //     let mut cpu = CPU {
+    //         ..Default::default()
+    //     };
+    //     let mut memory = Memory {
+    //         ..Default::default()
+    //     };
+
+    //     cpu.reset();
+
+    //     let values1    = [0b0000_0000u8, 0b1111_1111, 0b0000_1111];
+    //     let values2    = [0b1111_1111u8, 0b0101_0101, 0b0011_0011];
+    //     let values_res: Vec<u8> = zip(values1, values2).map(|pair| pair.0 & pair.1).collect();
+    
+    //     for i in 0..3 {
+    //         memory.write_byte(2 * i, Instruction::AND_IM.into());
+    //         memory.write_byte(2 * i + 1, values2[i as usize]);
+    //     }
+
+    //     let cpu_copy = cpu.clone();
+
+    //     for i in 0..3 {
+    //         let pc = cpu.pc;
+    //         let cycles = cpu.cycles;
+    //         let value = values_res[i];
+    //         let instruction = cpu.fetch_instruction(&memory);
+
+    //         cpu.a = values1[i];
+
+    //         cpu.execute(&mut memory, instruction);
+
+    //         assert_eq!(cpu.a, value);
+    //         assert_eq!(cpu.pc, pc + 2);
+    //         assert_eq!(cpu.cycles, cycles + 2);
+    //         assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
+    //         assert_eq!(cpu.get_zero(), value == 0);
+    //         assert_eq!(
+    //             cpu.get_interrupt_disable(),
+    //             cpu_copy.get_interrupt_disable()
+    //         );
+    //         assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+    //         assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
+    //         assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
+    //         assert_eq!(cpu.get_negative(), (value as i8) < 0);
+    //     }
+    // }
+
 }
 
 fn main() {
