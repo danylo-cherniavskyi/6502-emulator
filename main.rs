@@ -2175,6 +2175,65 @@ mod tests {
         };
     }
 
+    macro_rules! test_logic_absolute_reg {
+        ($func_name: ident, $op_func: expr, $instr_name: ident, $reg_name: ident) => {
+            #[test]
+            fn $func_name() {
+                let mut cpu = CPU {
+                    ..Default::default()
+                };
+                let mut memory = Memory {
+                    ..Default::default()
+                };
+
+                cpu.reset();
+
+                let values1    = [0b0000_0000u8, 0b1111_1111, 0b0000_1111];
+                let values2    = [0b1111_1111u8, 0b0101_0101, 0b0011_0011];
+                let values_res: Vec<u8> = zip(values1, values2).map(|pair| $op_func(pair.0, pair.1)).collect();
+                let addresses = [0x1234, 0x0020, 0xFF24];
+                let reg_addresses = [0x21, 0x12, 0x69];
+                let addresses_actual = [0x1255, 0x0032, 0xFF8D];
+
+                let additional_cycles = [1, 0, 1];
+
+                for i in 0..3 {
+                    memory.write_byte(3 * i, Instruction::$instr_name.into());
+                    memory.write_word(3 * i + 1, addresses[i as usize]);
+                    memory.write_byte(addresses_actual[i as usize], values2[i as usize]);
+                }
+
+                let cpu_copy = cpu.clone();
+
+                for i in 0..3 {
+                    let pc = cpu.pc;
+                    let cycles = cpu.cycles;
+                    let value = values_res[i];
+                    let instruction = cpu.fetch_instruction(&memory);
+
+                    cpu.a = values1[i];
+                    cpu.$reg_name = reg_addresses[i];
+
+                    cpu.execute(&mut memory, instruction);
+
+                    assert_eq!(cpu.a, value);
+                    assert_eq!(cpu.pc, pc + 3);
+                    assert_eq!(cpu.cycles, cycles + 4 + additional_cycles[i]);
+                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
+                    assert_eq!(cpu.get_zero(), value == 0);
+                    assert_eq!(
+                        cpu.get_interrupt_disable(),
+                        cpu_copy.get_interrupt_disable()
+                    );
+                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
+                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
+                    assert_eq!(cpu.get_negative(), (value as i8) < 0);
+                }
+            }
+        };
+    }
+
     test_logic_immediate! {test_and_immediate, |n1, n2| n1 & n2, AND_IM}
 
     test_logic_immediate! {test_eor_immediate, |n1, n2| n1 ^ n2, EOR_IM}
@@ -2198,6 +2257,19 @@ mod tests {
     test_logic_absolute! {test_eor_absolute, |n1, n2| n1 ^ n2, EOR_IM}
 
     test_logic_absolute! {test_ora_absolute, |n1, n2| n1 | n2, ORA_IM}
+
+    test_logic_absolute_reg! {test_and_absolute_x, |n1, n2| n1 & n2, AND_IM, x}
+
+    test_logic_absolute_reg! {test_eor_absolute_x, |n1, n2| n1 ^ n2, EOR_IM, x}
+    
+    test_logic_absolute_reg! {test_ora_absolute_x, |n1, n2| n1 | n2, ORA_IM, x}
+
+    test_logic_absolute_reg! {test_and_absolute_y, |n1, n2| n1 & n2, AND_IM, y}
+
+    test_logic_absolute_reg! {test_eor_absolute_y, |n1, n2| n1 ^ n2, EOR_IM, y}
+
+    test_logic_absolute_reg! {test_ora_absolute_y, |n1, n2| n1 | n2, ORA_IM, y}
+
 
     // #[test]
     // fn test_and_immediate() {
