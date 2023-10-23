@@ -913,6 +913,25 @@ macro_rules! logic_absolute_reg {
     };
 }
 
+macro_rules! logic_indirect_x {
+    ($func_name: ident, $op_func: expr) => {
+        fn $func_name(&mut self, memory: &Memory) {
+            let addr = memory.read_byte(self.pc);
+            let addr_zp_actual = self.add_mod_256(addr, self.x);
+            let addr_on_zp = memory.read_word(addr_zp_actual as u16);
+            let value = memory.read_byte(addr_on_zp);
+            let res = $op_func(self.a, value);
+
+            self.a = res;
+
+            self.test_number(self.a);
+
+            self.pc += 1;
+            self.cycles += 6;
+        }
+    };
+}
+
 impl CPU {
     logic_immediate! {and_immediate, |n1, n2| n1 & n2}
 
@@ -926,9 +945,7 @@ impl CPU {
 
     logic_absolute_reg! {and_absolute_y, |n1, n2| n1 & n2, y}
 
-    fn and_indirect_x(&mut self, memory: &Memory) {
-        todo!();
-    }
+    logic_indirect_x! {and_indirect_x, |n1, n2| n1 & n2}
 
     fn and_indirect_y(&mut self, memory: &Memory) {
         todo!();
@@ -946,9 +963,7 @@ impl CPU {
 
     logic_absolute_reg! {eor_absolute_y, |n1, n2| n1 ^ n2, y}
 
-    fn eor_indirect_x(&mut self, memory: &Memory) {
-        todo!();
-    }
+    logic_indirect_x! {eor_indirect_x, |n1, n2| n1 ^ n2}
 
     fn eor_indirect_y(&mut self, memory: &Memory) {
         todo!();
@@ -966,9 +981,7 @@ impl CPU {
 
     logic_absolute_reg! {ora_absolute_y, |n1, n2| n1 | n2, y}
 
-    fn ora_indirect_x(&mut self, memory: &Memory) {
-        todo!();
-    }
+    logic_indirect_x! {ora_indirect_x, |n1, n2| n1 | n2}
 
     fn ora_indirect_y(&mut self, memory: &Memory) {
         todo!();
@@ -2305,8 +2318,8 @@ mod tests {
                 let values2    = [0b1111_1111u8, 0b0101_0101, 0b0011_0011];
                 let values_res: Vec<u8> = zip(values1, values2).map(|pair| $op_func(pair.0, pair.1)).collect();
                 let addresses = [0x10, 0x24, 0x70];
-                let x_addresses = [0x20, 0x35, 0xff];
-                let addresses_zero_page_actual = [0x30, 0x59, 0x69];
+                let x_addresses = [0x20, 0x35, 0xFF];
+                let addresses_zero_page_actual = [0x30, 0x59, 0x6F];
                 let addresses_actual = [0x1234, 0x4321, 0xFF24];
 
                 for i in 0..3 {
@@ -2450,11 +2463,11 @@ mod tests {
 
     test_logic_indirect_x! {test_ora_indirect_x, |n1, n2| n1 | n2, ORA_IN_X}
 
-    test_logic_indirect_y! {test_and_indirect_y, |n1, n2| n1 & n2, AND_IN_X}
+    test_logic_indirect_y! {test_and_indirect_y, |n1, n2| n1 & n2, AND_IN_Y}
     
-    test_logic_indirect_y! {test_eor_indirect_y, |n1, n2| n1 ^ n2, EOR_IN_X}
+    test_logic_indirect_y! {test_eor_indirect_y, |n1, n2| n1 ^ n2, EOR_IN_Y}
     
-    test_logic_indirect_y! {test_ora_indirect_y, |n1, n2| n1 | n2, ORA_IN_X}
+    test_logic_indirect_y! {test_ora_indirect_y, |n1, n2| n1 | n2, ORA_IN_Y}
 
     #[test]
     fn test_bit_zero_page() {
