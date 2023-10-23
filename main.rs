@@ -1005,11 +1005,27 @@ impl CPU {
     logic_indirect_y! {ora_indirect_y, |n1, n2| n1 | n2}
 
     fn bit_zero_page(&mut self, memory: &Memory) {
-        todo!();
+        let addr = memory.read_byte(self.pc);
+        let value = memory.read_byte(addr as u16);
+
+        self.set_zero((self.a & value) == 0);
+        self.set_overflow((value & 0b0100_0000) == 0b0100_0000);
+        self.set_negative((value & 0b1000_0000) == 0b1000_0000);
+
+        self.pc += 1;
+        self.cycles += 3;
     }
 
     fn bit_absolute(&mut self, memory: &Memory) {
-        todo!();
+        let addr = memory.read_word(self.pc);
+        let value = memory.read_byte(addr);
+
+        self.set_zero((self.a & value) == 0);
+        self.set_overflow((value & 0b0100_0000) == 0b0100_0000);
+        self.set_negative((value & 0b1000_0000) == 0b1000_0000);
+
+        self.pc += 2;
+        self.cycles += 4;
     }
 }
 
