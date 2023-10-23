@@ -906,7 +906,7 @@ macro_rules! logic_absolute_reg {
             self.pc += 2;
             self.cycles += 4;
 
-            if addr_actual > 0x100 {
+            if addr_actual >= 0x100 {
                 self.cycles += 1;
             }
         }
@@ -932,6 +932,29 @@ macro_rules! logic_indirect_x {
     };
 }
 
+macro_rules! logic_indirect_y {
+    ($func_name: ident, $op_func: expr) => {
+        fn $func_name(&mut self, memory: &Memory) {
+            let addr = memory.read_byte(self.pc);
+            let addr_on_zp = memory.read_word(addr as u16);
+            let addr_actual = self.add_mod_65536(addr_on_zp, self.y as u16);
+            let value = memory.read_byte(addr_actual);
+            let res = $op_func(self.a, value);
+            
+            self.a = res;
+
+            self.test_number(self.a);
+
+            self.pc += 1;
+            self.cycles += 5;
+
+            if addr_actual >= 0x100 {
+                self.cycles += 1;
+            }
+        }
+    };
+}
+
 impl CPU {
     logic_immediate! {and_immediate, |n1, n2| n1 & n2}
 
@@ -947,9 +970,7 @@ impl CPU {
 
     logic_indirect_x! {and_indirect_x, |n1, n2| n1 & n2}
 
-    fn and_indirect_y(&mut self, memory: &Memory) {
-        todo!();
-    }
+    logic_indirect_y! {and_indirect_y, |n1, n2| n1 & n2}
 
     logic_immediate! {eor_immediate, |n1, n2| n1 ^ n2}
 
@@ -965,9 +986,7 @@ impl CPU {
 
     logic_indirect_x! {eor_indirect_x, |n1, n2| n1 ^ n2}
 
-    fn eor_indirect_y(&mut self, memory: &Memory) {
-        todo!();
-    }
+    logic_indirect_y! {eor_indirect_y, |n1, n2| n1 ^ n2}
 
     logic_immediate! {ora_immediate, |n1, n2| n1 | n2}
 
@@ -983,9 +1002,7 @@ impl CPU {
 
     logic_indirect_x! {ora_indirect_x, |n1, n2| n1 | n2}
 
-    fn ora_indirect_y(&mut self, memory: &Memory) {
-        todo!();
-    }
+    logic_indirect_y! {ora_indirect_y, |n1, n2| n1 | n2}
 
     fn bit_zero_page(&mut self, memory: &Memory) {
         todo!();
@@ -2376,7 +2393,7 @@ mod tests {
                 let values1    = [0b0000_0000u8, 0b1111_1111, 0b0000_1111];
                 let values2    = [0b1111_1111u8, 0b0101_0101, 0b0011_0011];
                 let values_res: Vec<u8> = zip(values1, values2).map(|pair| $op_func(pair.0, pair.1)).collect();
-                let addresses_zp = [0x10, 0x23, 0x69];
+                let addresses_zp = [0x10, 0x23, 0x96];
                 let addresses_in_zp = [0x1234, 0x0045, 0xABCD];
                 let y_addresses = [0x54, 0x24, 0xAB];
                 let addresses_actual = [0x1288, 0x0069, 0xAC78];
