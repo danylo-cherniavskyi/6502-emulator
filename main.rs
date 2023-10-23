@@ -823,10 +823,24 @@ impl CPU {
     pull_reg! {pull_processor_status, status, false}
 }
 
+macro_rules! logic_immediate {
+    ($func_name: ident, $op_func: expr) => {
+        fn $func_name(&mut self, memory: &Memory) {
+            let value = memory.read_byte(self.pc);
+            let res = $op_func(self.a, value);
+    
+            self.a = res;
+
+            self.test_number(self.a);
+
+            self.pc += 1;
+            self.cycles += 2;
+            }
+    };
+}
+
 impl CPU {
-    fn and_immediate(&mut self, memory: &Memory) {
-        todo!();
-    }
+    logic_immediate! {and_immediate, |n1, n2| n1 & n2}
 
     fn and_zero_page(&mut self, memory: &Memory) {
         todo!();
@@ -856,9 +870,7 @@ impl CPU {
         todo!();
     }
 
-    fn eor_immediate(&mut self, memory: &Memory) {
-        todo!();
-    }
+    logic_immediate! {eor_immediate, |n1, n2| n1 ^ n2}
 
     fn eor_zero_page(&mut self, memory: &Memory) {
         todo!();
@@ -888,9 +900,7 @@ impl CPU {
         todo!();
     }
 
-    fn ora_immediate(&mut self, memory: &Memory) {
-        todo!();
-    }
+    logic_immediate! {ora_immediate, |n1, n2| n1 | n2}
 
     fn ora_zero_page(&mut self, memory: &Memory) {
         todo!();
@@ -2360,47 +2370,47 @@ mod tests {
 
     test_logic_immediate! {test_ora_immediate, |n1, n2| n1 | n2, ORA_IM}
 
-    test_logic_zero_page! {test_and_zero_page, |n1, n2| n1 & n2, AND_IM}
+    test_logic_zero_page! {test_and_zero_page, |n1, n2| n1 & n2, AND_ZP}
 
-    test_logic_zero_page! {test_eor_zero_page, |n1, n2| n1 ^ n2, EOR_IM}
+    test_logic_zero_page! {test_eor_zero_page, |n1, n2| n1 ^ n2, EOR_ZP}
 
-    test_logic_zero_page! {test_ora_zero_page, |n1, n2| n1 | n2, ORA_IM}
+    test_logic_zero_page! {test_ora_zero_page, |n1, n2| n1 | n2, ORA_ZP}
 
-    test_logic_zero_page_x! {test_and_zero_page_x, |n1, n2| n1 & n2, AND_IM}
+    test_logic_zero_page_x! {test_and_zero_page_x, |n1, n2| n1 & n2, AND_ZP_X}
 
-    test_logic_zero_page_x! {test_eor_zero_page_x, |n1, n2| n1 ^ n2, EOR_IM}
+    test_logic_zero_page_x! {test_eor_zero_page_x, |n1, n2| n1 ^ n2, EOR_ZP_X}
 
-    test_logic_zero_page_x! {test_ora_zero_page_x, |n1, n2| n1 | n2, ORA_IM}
+    test_logic_zero_page_x! {test_ora_zero_page_x, |n1, n2| n1 | n2, ORA_ZP_X}
 
-    test_logic_absolute! {test_and_absolute, |n1, n2| n1 & n2, AND_IM}
+    test_logic_absolute! {test_and_absolute, |n1, n2| n1 & n2, AND_ABS}
 
-    test_logic_absolute! {test_eor_absolute, |n1, n2| n1 ^ n2, EOR_IM}
+    test_logic_absolute! {test_eor_absolute, |n1, n2| n1 ^ n2, EOR_ABS}
 
-    test_logic_absolute! {test_ora_absolute, |n1, n2| n1 | n2, ORA_IM}
+    test_logic_absolute! {test_ora_absolute, |n1, n2| n1 | n2, ORA_ABS}
 
-    test_logic_absolute_reg! {test_and_absolute_x, |n1, n2| n1 & n2, AND_IM, x}
+    test_logic_absolute_reg! {test_and_absolute_x, |n1, n2| n1 & n2, AND_ABS_X, x}
 
-    test_logic_absolute_reg! {test_eor_absolute_x, |n1, n2| n1 ^ n2, EOR_IM, x}
+    test_logic_absolute_reg! {test_eor_absolute_x, |n1, n2| n1 ^ n2, EOR_ABS_X, x}
     
-    test_logic_absolute_reg! {test_ora_absolute_x, |n1, n2| n1 | n2, ORA_IM, x}
+    test_logic_absolute_reg! {test_ora_absolute_x, |n1, n2| n1 | n2, ORA_ABS_X, x}
 
-    test_logic_absolute_reg! {test_and_absolute_y, |n1, n2| n1 & n2, AND_IM, y}
+    test_logic_absolute_reg! {test_and_absolute_y, |n1, n2| n1 & n2, AND_ABS_Y, y}
 
-    test_logic_absolute_reg! {test_eor_absolute_y, |n1, n2| n1 ^ n2, EOR_IM, y}
+    test_logic_absolute_reg! {test_eor_absolute_y, |n1, n2| n1 ^ n2, EOR_ABS_Y, y}
 
-    test_logic_absolute_reg! {test_ora_absolute_y, |n1, n2| n1 | n2, ORA_IM, y}
+    test_logic_absolute_reg! {test_ora_absolute_y, |n1, n2| n1 | n2, ORA_ABS_Y, y}
 
-    test_logic_indirect_x! {test_and_indirect_x, |n1, n2| n1 & n2, AND_IM}
+    test_logic_indirect_x! {test_and_indirect_x, |n1, n2| n1 & n2, AND_IN_X}
 
-    test_logic_indirect_x! {test_eor_indirect_x, |n1, n2| n1 ^ n2, EOR_IM}
+    test_logic_indirect_x! {test_eor_indirect_x, |n1, n2| n1 ^ n2, EOR_IN_X}
 
-    test_logic_indirect_x! {test_ora_indirect_x, |n1, n2| n1 | n2, ORA_IM}
+    test_logic_indirect_x! {test_ora_indirect_x, |n1, n2| n1 | n2, ORA_IN_X}
 
-    test_logic_indirect_y! {test_and_indirect_y, |n1, n2| n1 & n2, AND_IM}
+    test_logic_indirect_y! {test_and_indirect_y, |n1, n2| n1 & n2, AND_IN_X}
     
-    test_logic_indirect_y! {test_eor_indirect_y, |n1, n2| n1 ^ n2, EOR_IM}
+    test_logic_indirect_y! {test_eor_indirect_y, |n1, n2| n1 ^ n2, EOR_IN_X}
     
-    test_logic_indirect_y! {test_ora_indirect_y, |n1, n2| n1 | n2, ORA_IM}
+    test_logic_indirect_y! {test_ora_indirect_y, |n1, n2| n1 | n2, ORA_IN_X}
 
     #[test]
     fn test_bit_zero_page() {
