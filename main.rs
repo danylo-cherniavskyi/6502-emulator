@@ -2064,6 +2064,63 @@ mod tests {
         };
     }
 
+    macro_rules! test_logic_zero_page_x {
+        ($func_name: ident, $op_func: expr, $instr_name: ident) => {
+            #[test]
+            fn $func_name() {
+                let mut cpu = CPU {
+                    ..Default::default()
+                };
+                let mut memory = Memory {
+                    ..Default::default()
+                };
+        
+                cpu.reset();
+        
+                let values1    = [0b0000_0000u8, 0b1111_1111, 0b0000_1111];
+                let values2    = [0b1111_1111u8, 0b0101_0101, 0b0011_0011];
+                let values_res: Vec<u8> = zip(values1, values2).map(|pair| $op_func(pair.0, pair.1)).collect();
+                let addresses =  [0x10, 0xAB, 0xFF];
+                let x_addresses = [0x20, 0x10, 0x40];
+                let addresses_actual = [0x30, 0xBB, 0x3F];
+
+                for i in 0..3 {
+                    memory.write_byte(2 * i, Instruction::AND_IM.into());
+                    memory.write_byte(2 * i + 1, addresses[i as usize]);
+                    memory.write_byte(addresses_actual[i as usize] as u16, values2[i as usize]);
+                }
+
+                let cpu_copy = cpu.clone();
+
+                for i in 0..3 {
+                    let pc = cpu.pc;
+                    let cycles = cpu.cycles;
+                    let value = values_res[i];
+                    let instruction = cpu.fetch_instruction(&memory);
+
+                    cpu.a = values1[i];
+                    cpu.x = x_addresses[i];
+
+                    cpu.execute(&mut memory, instruction);
+
+                    assert_eq!(cpu.a, value);
+                    assert_eq!(cpu.pc, pc + 2);
+                    assert_eq!(cpu.cycles, cycles + 4);
+                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
+                    assert_eq!(cpu.get_zero(), value == 0);
+                    assert_eq!(
+                        cpu.get_interrupt_disable(),
+                        cpu_copy.get_interrupt_disable()
+                    );
+                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
+                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
+                    assert_eq!(cpu.get_negative(), (value as i8) < 0);
+                }
+            }
+        };
+    }
+
     test_logic_immediate! {test_and_immediate, |n1, n2| n1 & n2, AND_IM}
 
     test_logic_immediate! {test_eor_immediate, |n1, n2| n1 ^ n2, EOR_IM}
@@ -2075,6 +2132,13 @@ mod tests {
     test_logic_zero_page! {test_eor_zero_page, |n1, n2| n1 ^ n2, EOR_IM}
 
     test_logic_zero_page! {test_ora_zero_page, |n1, n2| n1 | n2, ORA_IM}
+
+    test_logic_zero_page_x! {test_and_zero_page_x, |n1, n2| n1 & n2, AND_IM}
+
+    test_logic_zero_page_x! {test_eor_zero_page_x, |n1, n2| n1 ^ n2, EOR_IM}
+
+    test_logic_zero_page_x! {test_ora_zero_page_x, |n1, n2| n1 | n2, ORA_IM}
+
     // #[test]
     // fn test_and_immediate() {
     //     let mut cpu = CPU {
