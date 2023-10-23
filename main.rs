@@ -1976,7 +1976,7 @@ mod tests {
                 let values_res: Vec<u8> = zip(values1, values2).map(|pair| $op_func(pair.0, pair.1)).collect();
             
                 for i in 0..3 {
-                    memory.write_byte(2 * i, Instruction::AND_IM.into());
+                    memory.write_byte(2 * i, Instruction::$instr_name.into());
                     memory.write_byte(2 * i + 1, values2[i as usize]);
                 }
         
@@ -2029,7 +2029,7 @@ mod tests {
                 let addresses =  [0x10, 0xAB, 0xFF];
 
                 for i in 0..3 {
-                    memory.write_byte(2 * i, Instruction::AND_IM.into());
+                    memory.write_byte(2 * i, Instruction::$instr_name.into());
                     memory.write_byte(2 * i + 1, addresses[i as usize]);
                     memory.write_byte(addresses[i as usize] as u16, values2[i as usize]);
                 }
@@ -2085,7 +2085,7 @@ mod tests {
                 let addresses_actual = [0x30, 0xBB, 0x3F];
 
                 for i in 0..3 {
-                    memory.write_byte(2 * i, Instruction::AND_IM.into());
+                    memory.write_byte(2 * i, Instruction::$instr_name.into());
                     memory.write_byte(2 * i + 1, addresses[i as usize]);
                     memory.write_byte(addresses_actual[i as usize] as u16, values2[i as usize]);
                 }
