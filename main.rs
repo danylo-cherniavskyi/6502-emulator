@@ -2402,6 +2402,106 @@ mod tests {
     
     test_logic_indirect_y! {test_ora_indirect_y, |n1, n2| n1 | n2, ORA_IM}
 
+    #[test]
+    fn test_bit_zero_page() {
+        let mut cpu = CPU {
+            ..Default::default()
+        };
+        let mut memory = Memory {
+            ..Default::default()
+        };
+
+        cpu.reset();
+
+        let values1    = [0b0000_0000u8, 0b1111_1111, 0b1000_1111];
+        let values2    = [0b1111_1111u8, 0b0101_0101, 0b1011_0011];
+        let zero_flags = [true, false, false];
+        let overflow_flags = [true, true, false];
+        let negative_flags = [true, false, true];
+        let addresses =  [0x10, 0xAB, 0xFF];
+
+        for i in 0..3 {
+            memory.write_byte(2 * i, Instruction::BIT_ZP.into());
+            memory.write_byte(2 * i + 1, addresses[i as usize]);
+            memory.write_byte(addresses[i as usize] as u16, values2[i as usize]);
+        }
+
+        let cpu_copy = cpu.clone();
+
+        for i in 0..3 {
+            let pc = cpu.pc;
+            let cycles = cpu.cycles;
+            let instruction = cpu.fetch_instruction(&memory);
+
+            cpu.a = values1[i];
+
+            cpu.execute(&mut memory, instruction);
+
+            assert_eq!(cpu.pc, pc + 2);
+            assert_eq!(cpu.cycles, cycles + 3);
+            assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
+            assert_eq!(cpu.get_zero(), zero_flags[i]);
+            assert_eq!(
+                cpu.get_interrupt_disable(),
+                cpu_copy.get_interrupt_disable()
+            );
+            assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+            assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
+            assert_eq!(cpu.get_overflow(), overflow_flags[i]);
+            assert_eq!(cpu.get_negative(), negative_flags[i]);
+        }
+    }
+
+    #[test]
+    fn test_bit_absolute() {
+        let mut cpu = CPU {
+            ..Default::default()
+        };
+        let mut memory = Memory {
+            ..Default::default()
+        };
+
+        cpu.reset();
+
+        let values1    = [0b0000_0000u8, 0b1111_1111, 0b1000_1111];
+        let values2    = [0b1111_1111u8, 0b0101_0101, 0b1011_0011];
+        let zero_flags = [true, false, false];
+        let overflow_flags = [true, true, false];
+        let negative_flags = [true, false, true];
+        let addresses =  [0x1234, 0x4321, 0xABCD];
+
+        for i in 0..3 {
+            memory.write_byte(3 * i, Instruction::BIT_ABS.into());
+            memory.write_word(3 * i + 1, addresses[i as usize]);
+            memory.write_byte(addresses[i as usize] as u16, values2[i as usize]);
+        }
+
+        let cpu_copy = cpu.clone();
+
+        for i in 0..3 {
+            let pc = cpu.pc;
+            let cycles = cpu.cycles;
+            let instruction = cpu.fetch_instruction(&memory);
+
+            cpu.a = values1[i];
+
+            cpu.execute(&mut memory, instruction);
+
+            assert_eq!(cpu.pc, pc + 3);
+            assert_eq!(cpu.cycles, cycles + 4);
+            assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
+            assert_eq!(cpu.get_zero(), zero_flags[i]);
+            assert_eq!(
+                cpu.get_interrupt_disable(),
+                cpu_copy.get_interrupt_disable()
+            );
+            assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+            assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
+            assert_eq!(cpu.get_overflow(), overflow_flags[i]);
+            assert_eq!(cpu.get_negative(), negative_flags[i]);
+        }
+    }
+
 }
 
 fn main() {
