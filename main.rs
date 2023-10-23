@@ -839,12 +839,27 @@ macro_rules! logic_immediate {
     };
 }
 
+macro_rules! logic_zero_page {
+    ($func_name: ident, $op_func: expr) => {
+        fn $func_name(&mut self, memory: &Memory) {
+            let value_addr_zp = memory.read_byte(self.pc);
+            let value = memory.read_byte(value_addr_zp as u16);
+            let res = $op_func(self.a, value);
+
+            self.a = res;
+
+            self.test_number(self.a);
+
+            self.pc += 1;
+            self.cycles += 3;
+        }
+    };
+}
+
 impl CPU {
     logic_immediate! {and_immediate, |n1, n2| n1 & n2}
 
-    fn and_zero_page(&mut self, memory: &Memory) {
-        todo!();
-    }
+    logic_zero_page! {and_zero_page, |n1, n2| n1 & n2}
 
     fn and_zero_page_x(&mut self, memory: &Memory) {
         todo!();
@@ -872,9 +887,7 @@ impl CPU {
 
     logic_immediate! {eor_immediate, |n1, n2| n1 ^ n2}
 
-    fn eor_zero_page(&mut self, memory: &Memory) {
-        todo!();
-    }
+    logic_zero_page! {eor_zero_page, |n1, n2| n1 ^ n2}
 
     fn eor_zero_page_x(&mut self, memory: &Memory) {
         todo!();
@@ -902,9 +915,7 @@ impl CPU {
 
     logic_immediate! {ora_immediate, |n1, n2| n1 | n2}
 
-    fn ora_zero_page(&mut self, memory: &Memory) {
-        todo!();
-    }
+    logic_zero_page! {ora_zero_page, |n1, n2| n1 | n2}
 
     fn ora_zero_page_x(&mut self, memory: &Memory) {
         todo!();
