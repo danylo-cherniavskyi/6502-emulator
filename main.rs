@@ -874,6 +874,45 @@ macro_rules! logic_zero_page_x {
     };
 }
 
+macro_rules! logic_absolute {
+    ($func_name: ident, $op_func: expr) => {
+        fn $func_name(&mut self, memory: &Memory) {
+            let addr = memory.read_word(self.pc);
+            let value = memory.read_byte(addr);
+            let res = $op_func(self.a, value);
+
+            self.a = res;
+
+            self.test_number(self.a);
+
+            self.pc += 2;
+            self.cycles += 4
+        }
+    };
+}
+
+macro_rules! logic_absolute_reg {
+    ($func_name: ident, $op_func: expr, $reg_name: ident) => {
+        fn $func_name(&mut self, memory: &Memory) {
+            let addr = memory.read_word(self.pc);
+            let addr_actual = self.add_mod_65536(addr, self.$reg_name as u16);
+            let value = memory.read_byte(addr_actual);
+            let res = $op_func(self.a, value);
+
+            self.a = res;
+
+            self.test_number(self.a);
+
+            self.pc += 2;
+            self.cycles += 4;
+
+            if addr_actual > 0x100 {
+                self.cycles += 1;
+            }
+        }
+    };
+}
+
 impl CPU {
     logic_immediate! {and_immediate, |n1, n2| n1 & n2}
 
@@ -881,17 +920,11 @@ impl CPU {
 
     logic_zero_page_x! {and_zero_page_x, |n1, n2| n1 & n2}
 
-    fn and_absolute(&mut self, memory: &Memory) {
-        todo!();
-    }
+    logic_absolute! {and_absolute, |n1, n2| n1 & n2}
 
-    fn and_absolute_x(&mut self, memory: &Memory) {
-        todo!();
-    }
+    logic_absolute_reg! {and_absolute_x, |n1, n2| n1 & n2, x}
 
-    fn and_absolute_y(&mut self, memory: &Memory) {
-        todo!();
-    }
+    logic_absolute_reg! {and_absolute_y, |n1, n2| n1 & n2, y}
 
     fn and_indirect_x(&mut self, memory: &Memory) {
         todo!();
@@ -907,17 +940,11 @@ impl CPU {
 
     logic_zero_page_x! {eor_zero_page_x, |n1, n2| n1 ^ n2}
 
-    fn eor_absolute(&mut self, memory: &Memory) {
-        todo!();
-    }
+    logic_absolute! {eor_absolute, |n1, n2| n1 ^ n2}
 
-    fn eor_absolute_x(&mut self, memory: &Memory) {
-        todo!();
-    }
+    logic_absolute_reg! {eor_absolute_x, |n1, n2| n1 ^ n2, x}
 
-    fn eor_absolute_y(&mut self, memory: &Memory) {
-        todo!();
-    }
+    logic_absolute_reg! {eor_absolute_y, |n1, n2| n1 ^ n2, y}
 
     fn eor_indirect_x(&mut self, memory: &Memory) {
         todo!();
@@ -933,17 +960,11 @@ impl CPU {
 
     logic_zero_page_x! {ora_zero_page_x, |n1, n2| n1 | n2}
 
-    fn ora_absolute(&mut self, memory: &Memory) {
-        todo!();
-    }
+    logic_absolute! {ora_absolute, |n1, n2| n1 | n2}
 
-    fn ora_absolute_x(&mut self, memory: &Memory) {
-        todo!();
-    }
+    logic_absolute_reg! {ora_absolute_x, |n1, n2| n1 | n2, x}
 
-    fn ora_absolute_y(&mut self, memory: &Memory) {
-        todo!();
-    }
+    logic_absolute_reg! {ora_absolute_y, |n1, n2| n1 | n2, y}
 
     fn ora_indirect_x(&mut self, memory: &Memory) {
         todo!();
