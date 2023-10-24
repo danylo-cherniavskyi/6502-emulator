@@ -122,6 +122,46 @@ pub enum Instruction {
     // BIT TEST
     BIT_ZP,
     BIT_ABS,
+    // ARITHMETIC
+    // ADD WITH CARRY
+    ADC_IM,
+    ADC_ZP,
+    ADC_ZP_X,
+    ADC_ABS,
+    ADC_ABS_X,
+    ADC_ABS_Y,
+    ADC_IN_X,
+    ADC_IN_Y,
+
+    // SUBSTRACT WITH CARRY
+    SBC_IM,
+    SBC_ZP,
+    SBC_ZP_X,
+    SBC_ABS,
+    SBC_ABS_X,
+    SBC_ABS_Y,
+    SBC_IN_X,
+    SBC_IN_Y,
+
+    // COMPARE
+    CMP_IM,
+    CMP_ZP,
+    CMP_ZP_X,
+    CMP_ABS,
+    CMP_ABS_X,
+    CMP_ABS_Y,
+    CMP_IN_X,
+    CMP_IN_Y,
+
+    // COMPARE X
+    CPX_IM,
+    CPX_ZP,
+    CPX_ABS,
+
+    // COMPARE Y
+    CPY_IM,
+    CPY_ZP,
+    CPY_ABS,
 
     INVALID,
 }
@@ -209,6 +249,42 @@ impl From<u8> for Instruction {
             // Bit
             0x24 => Instruction::BIT_ZP,
             0x2C => Instruction::BIT_ABS,
+            // Arithmetic
+            // ADC
+            0x69 => Instruction::ADC_IM,
+            0x65 => Instruction::ADC_ZP,
+            0x75 => Instruction::ADC_ZP_X,
+            0x6D => Instruction::ADC_ABS,
+            0x7D => Instruction::ADC_ABS_X,
+            0x79 => Instruction::ADC_ABS_Y,
+            0x61 => Instruction::ADC_IN_X,
+            0x71 => Instruction::ADC_IN_Y,
+            // SBC
+            0xE9 => Instruction::SBC_IM,
+            0xE5 => Instruction::SBC_ZP,
+            0xF5 => Instruction::SBC_ZP_X,
+            0xED => Instruction::SBC_ABS,
+            0xFD => Instruction::SBC_ABS_X,
+            0xF9 => Instruction::SBC_ABS_Y,
+            0xE1 => Instruction::SBC_IN_X,
+            0xF1 => Instruction::SBC_IN_Y,
+            // CMP
+            0xC9 => Instruction::CMP_IM,
+            0xC5 => Instruction::CMP_ZP,
+            0xD5 => Instruction::CMP_ZP_X,
+            0xCD => Instruction::CMP_ABS,
+            0xDD => Instruction::CMP_ABS_X,
+            0xD9 => Instruction::CMP_ABS_Y,
+            0xC1 => Instruction::CMP_IN_X,
+            0xD1 => Instruction::CMP_IN_Y,
+            // CPX
+            0xE0 => Instruction::CPX_IM,
+            0xE4 => Instruction::CPX_ZP,
+            0xEC => Instruction::CPX_ABS,
+            // CPY
+            0xC0 => Instruction::CPY_IM,
+            0xC4 => Instruction::CPY_ZP,
+            0xCC => Instruction::CPY_ABS,
 
             _ => Instruction::INVALID,
         }
@@ -299,6 +375,42 @@ impl From<Instruction> for u8 {
             // Bit
             Instruction::BIT_ZP => 0x24,
             Instruction::BIT_ABS => 0x2C,
+            // Arithmetic
+            // ADC
+            Instruction::ADC_IM => 0x69,
+            Instruction::ADC_ZP => 0x65,
+            Instruction::ADC_ZP_X => 0x75,
+            Instruction::ADC_ABS => 0x6D,
+            Instruction::ADC_ABS_X => 0x7D,
+            Instruction::ADC_ABS_Y => 0x79,
+            Instruction::ADC_IN_X => 0x61,
+            Instruction::ADC_IN_Y => 0x71,
+            // SBC
+            Instruction::SBC_IM => 0xE9,
+            Instruction::SBC_ZP => 0xE5,
+            Instruction::SBC_ZP_X => 0xF5,
+            Instruction::SBC_ABS => 0xED,
+            Instruction::SBC_ABS_X => 0xFD,
+            Instruction::SBC_ABS_Y => 0xF9,
+            Instruction::SBC_IN_X => 0xE1,
+            Instruction::SBC_IN_Y => 0xF1,
+            // CMP
+            Instruction::CMP_IM => 0xC9,
+            Instruction::CMP_ZP => 0xC5,
+            Instruction::CMP_ZP_X => 0xD5,
+            Instruction::CMP_ABS => 0xCD,
+            Instruction::CMP_ABS_X => 0xDD,
+            Instruction::CMP_ABS_Y => 0xD9,
+            Instruction::CMP_IN_X => 0xC1,
+            Instruction::CMP_IN_Y => 0xD1,
+            // CPX
+            Instruction::CPX_IM => 0xE0,
+            Instruction::CPX_ZP => 0xE4,
+            Instruction::CPX_ABS => 0xEC,
+            // CPY
+            Instruction::CPY_IM => 0xC0,
+            Instruction::CPY_ZP => 0xC4,
+            Instruction::CPY_ABS => 0xCC,
 
             Instruction::INVALID => 0xFF,
         }
@@ -491,6 +603,43 @@ impl CPU {
             // Bit
             Instruction::BIT_ZP => self.bit_zero_page(memory),
             Instruction::BIT_ABS => self.bit_absolute(memory),
+
+            // Arithmetic
+            // ADC
+            Instruction::ADC_IM => self.adc_immediate(memory),
+            Instruction::ADC_ZP => self.adc_zero_page(memory),
+            Instruction::ADC_ZP_X => self.adc_zero_page_x(memory),
+            Instruction::ADC_ABS => self.adc_absolute(memory),
+            Instruction::ADC_ABS_X => self.adc_absolute_x(memory),
+            Instruction::ADC_ABS_Y => self.adc_absolute_y(memory),
+            Instruction::ADC_IN_X => self.adc_indirect_x(memory),
+            Instruction::ADC_IN_Y => self.adc_indirect_y(memory),
+            // SBC
+            Instruction::SBC_IM => self.sbc_immediate(memory),
+            Instruction::SBC_ZP => self.sbc_zero_page(memory),
+            Instruction::SBC_ZP_X => self.sbc_zero_page_x(memory),
+            Instruction::SBC_ABS => self.sbc_absolute(memory),
+            Instruction::SBC_ABS_X => self.sbc_absolute_x(memory),
+            Instruction::SBC_ABS_Y => self.sbc_absolute_y(memory),
+            Instruction::SBC_IN_X => self.sbc_indirect_x(memory),
+            Instruction::SBC_IN_Y => self.sbc_indirect_y(memory),
+            // CMP
+            Instruction::CMP_IM => self.cmp_immediate(memory),
+            Instruction::CMP_ZP => self.cmp_zero_page(memory),
+            Instruction::CMP_ZP_X => self.cmp_zero_page_x(memory),
+            Instruction::CMP_ABS => self.cmp_absolute(memory),
+            Instruction::CMP_ABS_X => self.cmp_absolute_x(memory),
+            Instruction::CMP_ABS_Y => self.cmp_absolute_y(memory),
+            Instruction::CMP_IN_X => self.cmp_indirect_x(memory),
+            Instruction::CMP_IN_Y => self.cmp_indirect_y(memory),
+            // CPX
+            Instruction::CPX_IM => self.cpx_immediate(memory),
+            Instruction::CPX_ZP => self.cpx_zero_page(memory),
+            Instruction::CPX_ABS => self.cpx_absolute(memory),
+            // CPY
+            Instruction::CPY_IM => self.cpy_immediate(memory),
+            Instruction::CPY_ZP => self.cpy_zero_page(memory),
+            Instruction::CPY_ABS => self.cpy_absolute(memory),
 
             Instruction::INVALID => println!("Error: Invalid instruction"),
         }
@@ -1026,6 +1175,128 @@ impl CPU {
 
         self.pc += 2;
         self.cycles += 4;
+    }
+}
+
+impl CPU {
+    fn adc_immediate(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn adc_zero_page(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn adc_zero_page_x(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn adc_absolute(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn adc_absolute_x(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn adc_absolute_y(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn adc_indirect_x(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn adc_indirect_y(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn sbc_immediate(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn sbc_zero_page(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn sbc_zero_page_x(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn sbc_absolute(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn sbc_absolute_x(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn sbc_absolute_y(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn sbc_indirect_x(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn sbc_indirect_y(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn cmp_immediate(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn cmp_zero_page(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn cmp_zero_page_x(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn cmp_absolute(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn cmp_absolute_x(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn cmp_absolute_y(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn cmp_indirect_x(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn cmp_indirect_y(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn cpx_immediate(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn cpx_zero_page(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn cpx_absolute(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn cpy_immediate(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn cpy_zero_page(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn cpy_absolute(&mut self, memory: &Memory) {
+        todo!();
     }
 }
 
