@@ -1,19 +1,118 @@
 type Byte = u8;
 type Word = u16;
 
+fn add_mod_256(n1: u8, n2: u8) -> u8 {
+    let sum = ((n1 as u16 + n2 as u16) % 256) as u8;
+    return sum;
+}
+
+fn add_mod_65536(n1: u16, n2: u16) -> u16 {
+    let sum = (n1 as u32 + n2 as u32) % (0xffff + 1);
+    return sum as u16;
+}
+
+pub trait MemoryLike<T> {
+    fn read(&self, addr: Word) -> T;
+    fn write(&mut self, addr: Word, value: T);
+    fn read_immediate(&self, pc: Word) -> T;
+    fn read_zero_page(&self, pc: Word) -> T;
+    fn read_zero_page_x(&self, pc: Word, x: Byte) -> T;
+    fn read_absolute(&self, pc: Word) -> T;
+    fn read_absolute_x(&self, pc: Word, x: Byte) -> T;
+    fn read_indirect_x(&self) -> T;
+    fn read_indirect_y(&self) -> T;
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct Memory {
     ram: [Byte; 0xffff],
 }
 
-impl Memory {
-    pub fn read_byte(&self, addr: Word) -> Byte {
+impl MemoryLike<u8> for Memory {
+    fn read(&self, addr: Word) -> u8 {
         return self.ram[addr as usize];
     }
 
-    pub fn read_word(&self, addr: Word) -> Word {
+    fn write(&mut self, addr: Word, value: u8) {
+        self.ram[addr as usize] = value;
+    }
+
+    fn read_immediate(&self, pc: Word) -> u8 {
+        todo!();
+    }
+
+    fn read_zero_page(&self, pc: Word) -> u8 {
+        todo!();
+    }
+
+    fn read_zero_page_x(&self, pc: Word, x: Byte) -> u8 {
+        todo!();
+    }
+
+    fn read_absolute(&self, pc: Word) -> u8 {
+        todo!();
+    }
+
+    fn read_absolute_x(&self, pc: Word, x: Byte) -> u8 {
+        todo!();
+    }
+
+    fn read_indirect_x(&self) -> u8 {
+        todo!();
+    }
+
+    fn read_indirect_y(&self) -> u8 {
+        todo!()
+    }
+}
+
+impl MemoryLike<u16> for Memory {
+    fn read(&self, addr: Word) -> u16 {
         return ((self.ram[(addr + 1) as usize] as u16) << 8) | self.ram[addr as usize] as u16;
     }
+
+    fn write(&mut self, addr: Word, value: u16) {
+        self.write(addr + 0, (value & 0x00ff) as u8);
+        self.write(addr + 1, ((value & 0xff00) >> 8) as u8)
+    }
+
+    fn read_immediate(&self, pc: Word) -> u16 {
+        todo!();
+    }
+
+    fn read_zero_page(&self, pc: Word) -> u16 {
+        todo!();
+    }
+
+    fn read_zero_page_x(&self, pc: Word, x: Byte) -> u16 {
+        todo!();
+    }
+
+    fn read_absolute(&self, pc: Word) -> u16 {
+        todo!();
+    }
+
+    fn read_absolute_x(&self, pc: Word, x: Byte) -> u16 {
+        todo!();
+    }
+
+    fn read_indirect_x(&self) -> u16 {
+        todo!();
+    }
+
+    fn read_indirect_y(&self) -> u16 {
+        todo!();
+    }
+}
+
+impl Memory {
+    // pub fn read(&self, addr: Word) -> Byte {
+    //     return self.ram[addr as usize];
+    // }
+
+    // pub fn read(&self, addr: Word) -> Word {
+    //     return ((self.ram[(addr + 1) as usize] as u16) << 8) | self.ram[addr as usize] as u16;
+    // }
 
     pub fn write_byte(&mut self, addr: Word, value: Byte) {
         self.ram[addr as usize] = value;
@@ -497,7 +596,7 @@ impl CPU {
     }
 
     pub fn fetch_instruction(&mut self, memory: &Memory) -> Instruction {
-        let instruction = memory.read_byte(self.pc);
+        let instruction: Byte = memory.read(self.pc);
         self.pc += 1;
 
         return Instruction::from(instruction);
@@ -507,7 +606,7 @@ impl CPU {
 macro_rules! ld_immediate {
     ($func_name: ident, $reg_name: ident) => {
         fn $func_name(&mut self, memory: &Memory) {
-            let value = memory.read_byte(self.pc);
+            let value: u8 = memory.read(self.pc);
             self.$reg_name = value;
             self.test_number(value);
 
@@ -520,8 +619,8 @@ macro_rules! ld_immediate {
 macro_rules! ld_zero_page {
     ($func_name: ident, $reg_name: ident) => {
         fn $func_name(&mut self, memory: &Memory) {
-            let address = memory.read_byte(self.pc);
-            let value = memory.read_byte(address as u16);
+            let address: u8 = memory.read(self.pc);
+            let value: u8 = memory.read(address as u16);
             self.$reg_name = value;
             self.test_number(value);
 
@@ -534,9 +633,9 @@ macro_rules! ld_zero_page {
 macro_rules! ld_zero_page_reg {
     ($func_name: ident, $reg_name: ident, $addr_reg: ident) => {
         fn $func_name(&mut self, memory: &Memory) {
-            let address = memory.read_byte(self.pc);
-            let address_final = self.add_mod_256(address, self.$addr_reg);
-            let value = memory.read_byte(address_final as u16);
+            let address: u8 = memory.read(self.pc);
+            let address_final = add_mod_256(address, self.$addr_reg);
+            let value: u8 = memory.read(address_final as u16);
             self.$reg_name = value;
             self.test_number(value);
 
@@ -549,8 +648,8 @@ macro_rules! ld_zero_page_reg {
 macro_rules! ld_absolute {
     ($func_name: ident, $reg_name: ident) => {
         fn $func_name(&mut self, memory: &Memory) {
-            let address = memory.read_word(self.pc);
-            let value = memory.read_byte(address);
+            let address: u16 = memory.read(self.pc);
+            let value: u8 = memory.read(address);
             self.$reg_name = value;
             self.test_number(value);
 
@@ -563,10 +662,10 @@ macro_rules! ld_absolute {
 macro_rules! ld_absolute_reg {
     ($func_name: ident, $reg_name: ident, $addr_reg: ident) => {
         fn $func_name(&mut self, memory: &Memory) {
-            let instruction_address = memory.read_word(self.pc);
+            let instruction_address: u16 = memory.read(self.pc);
             let reg_address = self.$addr_reg;
-            let address = self.add_mod_65536(instruction_address, reg_address as u16);
-            let value = memory.read_byte(address);
+            let address = add_mod_65536(instruction_address, reg_address as u16);
+            let value: u8 = memory.read(address);
             self.$reg_name = value;
             self.test_number(value);
 
@@ -590,11 +689,11 @@ impl CPU {
     ld_absolute_reg! {lda_absolute_y, a, y}
 
     fn lda_indirect_x(&mut self, memory: &Memory) {
-        let instruction_address = memory.read_byte(self.pc);
+        let instruction_address: u8 = memory.read(self.pc);
         let x_address = self.x;
-        let address = self.add_mod_256(instruction_address, x_address);
-        let actual_address = memory.read_word(address as u16);
-        let value = memory.read_byte(actual_address);
+        let address = add_mod_256(instruction_address, x_address);
+        let actual_address: u16 = memory.read(address as u16);
+        let value: u8 = memory.read(actual_address);
         self.a = value;
         self.test_number(value);
 
@@ -603,26 +702,16 @@ impl CPU {
     }
 
     fn lda_indirect_y(&mut self, memory: &Memory) {
-        let instruction_address = memory.read_byte(self.pc);
+        let instruction_address: u8 = memory.read(self.pc);
         let y_address = self.y;
-        let address_zp = memory.read_word(instruction_address as u16);
-        let actual_address = self.add_mod_65536(address_zp, y_address as u16);
-        let value = memory.read_byte(actual_address);
+        let address_zp: u16 = memory.read(instruction_address as u16);
+        let actual_address = add_mod_65536(address_zp, y_address as u16);
+        let value: u8 = memory.read(actual_address);
         self.a = value;
         self.test_number(value);
 
         self.pc += 1;
         self.cycles += if actual_address < 256 { 5 } else { 6 };
-    }
-
-    fn add_mod_256(&mut self, n1: u8, n2: u8) -> u8 {
-        let sum = ((n1 as u16 + n2 as u16) % 256) as u8;
-        return sum;
-    }
-
-    fn add_mod_65536(&mut self, n1: u16, n2: u16) -> u16 {
-        let sum = (n1 as u32 + n2 as u32) % (0xffff + 1);
-        return sum as u16;
     }
 
     // Sets flags based on number passed
@@ -659,7 +748,7 @@ impl CPU {
 macro_rules! st_zero_page {
     ($func_name: ident, $reg_name: ident) => {
         fn $func_name(&mut self, memory: &mut Memory) {
-            let address = memory.read_byte(self.pc);
+            let address: u8 = memory.read(self.pc);
             memory.write_byte(address as u16, self.$reg_name);
 
             self.pc += 1;
@@ -671,8 +760,8 @@ macro_rules! st_zero_page {
 macro_rules! st_zero_page_reg {
     ($func_name: ident, $reg_name: ident, $addr_reg: ident) => {
         fn $func_name(&mut self, memory: &mut Memory) {
-            let address = memory.read_byte(self.pc);
-            let address_actual = self.add_mod_256(address, self.$addr_reg);
+            let address: u8 = memory.read(self.pc);
+            let address_actual = add_mod_256(address, self.$addr_reg);
             memory.write_byte(address_actual as u16, self.$reg_name);
 
             self.pc += 1;
@@ -684,7 +773,7 @@ macro_rules! st_zero_page_reg {
 macro_rules! st_absolute {
     ($func_name: ident, $reg_name: ident) => {
         fn $func_name(&mut self, memory: &mut Memory) {
-            let address = memory.read_word(self.pc);
+            let address: u16 = memory.read(self.pc);
             memory.write_byte(address, self.$reg_name);
 
             self.pc += 2;
@@ -696,8 +785,8 @@ macro_rules! st_absolute {
 macro_rules! st_absolute_reg {
     ($func_name: ident, $reg_name: ident, $addr_reg: ident) => {
         fn $func_name(&mut self, memory: &mut Memory) {
-            let address = memory.read_word(self.pc);
-            let address_actual = self.add_mod_65536(address, self.$addr_reg as u16);
+            let address: u16 = memory.read(self.pc);
+            let address_actual = add_mod_65536(address, self.$addr_reg as u16);
             memory.write_byte(address_actual, self.$reg_name);
 
             self.pc += 2;
@@ -718,10 +807,10 @@ impl CPU {
     st_absolute_reg! {sta_absolute_y, a, y}
 
     fn sta_indirect_x(&mut self, memory: &mut Memory) {
-        let address = memory.read_byte(self.pc);
+        let address: u8 = memory.read(self.pc);
         let x_address = self.x;
-        let sum_address = self.add_mod_256(address, x_address);
-        let address_actual = memory.read_word(sum_address as u16);
+        let sum_address = add_mod_256(address, x_address);
+        let address_actual: u16 = memory.read(sum_address as u16);
         memory.write_byte(address_actual, self.a);
 
         self.pc += 1;
@@ -729,10 +818,10 @@ impl CPU {
     }
 
     fn sta_indirect_y(&mut self, memory: &mut Memory) {
-        let address = memory.read_byte(self.pc);
+        let address: u8 = memory.read(self.pc);
         let y_address = self.y;
-        let zp_address = memory.read_word(address as u16);
-        let address_actual = self.add_mod_65536(zp_address, y_address as u16);
+        let zp_address: u16 = memory.read(address as u16);
+        let address_actual = add_mod_65536(zp_address, y_address as u16);
         memory.write_byte(address_actual, self.a);
 
         self.pc += 1;
@@ -800,7 +889,7 @@ macro_rules! pull_reg {
     ($func_name: ident, $reg_name: ident, $test_en: expr) => {
         fn $func_name(&mut self, memory: &mut Memory) {
             self.sp -= 1;
-            let value = memory.read_byte(0x0100 + self.sp as u16);
+            let value: u8 = memory.read(0x0100 + self.sp as u16);
 
             self.$reg_name = value;
 
@@ -826,7 +915,7 @@ impl CPU {
 macro_rules! logic_immediate {
     ($func_name: ident, $op_func: expr) => {
         fn $func_name(&mut self, memory: &Memory) {
-            let value = memory.read_byte(self.pc);
+            let value: u8 = memory.read(self.pc);
             let res = $op_func(self.a, value);
     
             self.a = res;
@@ -842,8 +931,8 @@ macro_rules! logic_immediate {
 macro_rules! logic_zero_page {
     ($func_name: ident, $op_func: expr) => {
         fn $func_name(&mut self, memory: &Memory) {
-            let value_addr_zp = memory.read_byte(self.pc);
-            let value = memory.read_byte(value_addr_zp as u16);
+            let value_addr_zp: u8 = memory.read(self.pc);
+            let value: u8 = memory.read(value_addr_zp as u16);
             let res = $op_func(self.a, value);
 
             self.a = res;
@@ -859,9 +948,9 @@ macro_rules! logic_zero_page {
 macro_rules! logic_zero_page_x {
     ($func_name: ident, $op_func: expr) => {
         fn $func_name(&mut self, memory: &Memory) {
-            let value_addr_zp = memory.read_byte(self.pc);
-            let addr_actual = self.add_mod_256(value_addr_zp, self.x);
-            let value = memory.read_byte(addr_actual as u16);
+            let value_addr_zp: u8 = memory.read(self.pc);
+            let addr_actual = add_mod_256(value_addr_zp, self.x);
+            let value: u8 = memory.read(addr_actual as u16);
             let res = $op_func(self.a, value);
 
             self.a = res;
@@ -877,8 +966,8 @@ macro_rules! logic_zero_page_x {
 macro_rules! logic_absolute {
     ($func_name: ident, $op_func: expr) => {
         fn $func_name(&mut self, memory: &Memory) {
-            let addr = memory.read_word(self.pc);
-            let value = memory.read_byte(addr);
+            let addr: u16 = memory.read(self.pc);
+            let value: u8 = memory.read(addr);
             let res = $op_func(self.a, value);
 
             self.a = res;
@@ -894,9 +983,9 @@ macro_rules! logic_absolute {
 macro_rules! logic_absolute_reg {
     ($func_name: ident, $op_func: expr, $reg_name: ident) => {
         fn $func_name(&mut self, memory: &Memory) {
-            let addr = memory.read_word(self.pc);
-            let addr_actual = self.add_mod_65536(addr, self.$reg_name as u16);
-            let value = memory.read_byte(addr_actual);
+            let addr: u16 = memory.read(self.pc);
+            let addr_actual = add_mod_65536(addr, self.$reg_name as u16);
+            let value: u8 = memory.read(addr_actual);
             let res = $op_func(self.a, value);
 
             self.a = res;
@@ -916,10 +1005,10 @@ macro_rules! logic_absolute_reg {
 macro_rules! logic_indirect_x {
     ($func_name: ident, $op_func: expr) => {
         fn $func_name(&mut self, memory: &Memory) {
-            let addr = memory.read_byte(self.pc);
-            let addr_zp_actual = self.add_mod_256(addr, self.x);
-            let addr_on_zp = memory.read_word(addr_zp_actual as u16);
-            let value = memory.read_byte(addr_on_zp);
+            let addr: u8 = memory.read(self.pc);
+            let addr_zp_actual = add_mod_256(addr, self.x);
+            let addr_on_zp: u16 = memory.read(addr_zp_actual as u16);
+            let value: u8 = memory.read(addr_on_zp);
             let res = $op_func(self.a, value);
 
             self.a = res;
@@ -935,10 +1024,10 @@ macro_rules! logic_indirect_x {
 macro_rules! logic_indirect_y {
     ($func_name: ident, $op_func: expr) => {
         fn $func_name(&mut self, memory: &Memory) {
-            let addr = memory.read_byte(self.pc);
-            let addr_on_zp = memory.read_word(addr as u16);
-            let addr_actual = self.add_mod_65536(addr_on_zp, self.y as u16);
-            let value = memory.read_byte(addr_actual);
+            let addr: u8 = memory.read(self.pc);
+            let addr_on_zp: u16 = memory.read(addr as u16);
+            let addr_actual = add_mod_65536(addr_on_zp, self.y as u16);
+            let value: u8 = memory.read(addr_actual);
             let res = $op_func(self.a, value);
             
             self.a = res;
@@ -1005,8 +1094,8 @@ impl CPU {
     logic_indirect_y! {ora_indirect_y, |n1, n2| n1 | n2}
 
     fn bit_zero_page(&mut self, memory: &Memory) {
-        let addr = memory.read_byte(self.pc);
-        let value = memory.read_byte(addr as u16);
+        let addr: u8 = memory.read(self.pc);
+        let value: u8 = memory.read(addr as u16);
 
         self.set_zero((self.a & value) == 0);
         self.set_overflow((value & 0b0100_0000) == 0b0100_0000);
@@ -1017,8 +1106,8 @@ impl CPU {
     }
 
     fn bit_absolute(&mut self, memory: &Memory) {
-        let addr = memory.read_word(self.pc);
-        let value = memory.read_byte(addr);
+        let addr: u16 = memory.read(self.pc);
+        let value: u8 = memory.read(addr);
 
         self.set_zero((self.a & value) == 0);
         self.set_overflow((value & 0b0100_0000) == 0b0100_0000);
@@ -1313,7 +1402,8 @@ mod tests {
 
                     cpu.execute(&mut memory, instruction);
 
-                    assert_eq!(memory.read_byte(address as u16), value);
+                    let actual_value: u8 = memory.read(address as u16);
+                    assert_eq!(actual_value, value);
 
                     assert_eq!(cpu.pc, pc + 2);
                     assert_eq!(cpu.cycles, cycles + 3);
@@ -1367,7 +1457,8 @@ mod tests {
 
                     cpu.execute(&mut memory, instruction);
 
-                    assert_eq!(memory.read_byte(addresses_actual[i] as u16), value);
+                    let actual_value: u8 = memory.read(addresses_actual[i] as u16);
+                    assert_eq!(actual_value, value);
 
                     assert_eq!(cpu.pc, pc + 2);
                     assert_eq!(cpu.cycles, cycles + 4);
@@ -1419,7 +1510,8 @@ mod tests {
 
                     cpu.execute(&mut memory, instruction);
 
-                    assert_eq!(memory.read_byte(address as u16), value);
+                    let actual_value: u8 = memory.read(address as u16);
+                    assert_eq!(actual_value, value);
 
                     assert_eq!(cpu.pc, pc + 3);
                     assert_eq!(cpu.cycles, cycles + 4);
@@ -1474,7 +1566,8 @@ mod tests {
 
                     cpu.execute(&mut memory, instruction);
 
-                    assert_eq!(memory.read_byte(address as u16), value);
+                    let actual_value: u8 = memory.read(address as u16);
+                    assert_eq!(actual_value, value);
                     assert_eq!(cpu.pc, pc + 3);
                     assert_eq!(cpu.cycles, cycles + 5);
                     assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
@@ -1815,7 +1908,8 @@ mod tests {
 
             cpu.execute(&mut memory, instruction);
 
-            assert_eq!(memory.read_byte(address as u16), value);
+            let actual_value: u8 = memory.read(address as u16);
+            assert_eq!(actual_value, value);
             assert_eq!(cpu.pc, pc + 2);
             assert_eq!(cpu.cycles, cycles + 6);
             assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
@@ -1867,7 +1961,8 @@ mod tests {
 
             cpu.execute(&mut memory, instruction);
 
-            assert_eq!(memory.read_byte(address), value);
+            let actual_value: u8 = memory.read(address);
+            assert_eq!(actual_value, value);
             assert_eq!(cpu.pc, pc + 2);
             assert_eq!(cpu.cycles, cycles + 6);
             assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
@@ -1993,7 +2088,8 @@ mod tests {
 
                     cpu.execute(&mut memory, instruction);
 
-                    assert_eq!(memory.read_byte(0x0100 + (cpu.sp - 1) as u16), value);
+                    let actual_value: u8 = memory.read(0x0100 + (cpu.sp - 1) as u16);
+                    assert_eq!(actual_value, value);
                     assert_eq!(cpu.sp, (i + 1) as u8);
                     assert_eq!(cpu.pc, pc + 1);
                     assert_eq!(cpu.cycles, cycles + 3);
