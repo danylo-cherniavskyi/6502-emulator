@@ -18,8 +18,8 @@ pub trait MemoryLike<T> {
     fn read_zero_page_x(&self, pc: &mut Word, x: Byte) -> T;
     fn read_absolute(&self, pc: &mut Word) -> T;
     fn read_absolute_x(&self, pc: &mut Word, x: Byte) -> T;
-    fn read_indirect_x(&self, pc: Word, x: Byte) -> T;
-    fn read_indirect_y(&self, pc: Word, y: Byte) -> T;
+    fn read_indirect_x(&self, pc: &mut Word, x: Byte) -> T;
+    fn read_indirect_y(&self, pc: &mut Word, y: Byte) -> T;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -52,11 +52,11 @@ impl MemoryLike<u8> for Memory {
         todo!();
     }
 
-    fn read_indirect_x(&self, pc: Word, x: Byte) -> u8 {
+    fn read_indirect_x(&self, pc: &mut Word, x: Byte) -> u8 {
         todo!();
     }
 
-    fn read_indirect_y(&self, pc: Word, y: Byte) -> u8 {
+    fn read_indirect_y(&self, pc: &mut Word, y: Byte) -> u8 {
         todo!()
     }
 }
@@ -87,11 +87,11 @@ impl MemoryLike<u16> for Memory {
         todo!();
     }
 
-    fn read_indirect_x(&self, pc: Word, x: Byte) -> u16 {
+    fn read_indirect_x(&self, pc: &mut Word, x: Byte) -> u16 {
         todo!();
     }
 
-    fn read_indirect_y(&self, pc: Word, y: Byte) -> u16 {
+    fn read_indirect_y(&self, pc: &mut Word, y: Byte) -> u16 {
         todo!();
     }
 }
@@ -1403,6 +1403,62 @@ mod tests {
 
             assert_eq!(value, values[i]);
             assert_eq!(pcs[i], pcs_init[i] + 2);
+        }
+    }
+
+    #[test]
+    fn test_read_indirect_x_u8() {
+        let mut memory = Memory {
+            ..Default::default()
+        };
+
+        let mut pcs = [0x0000u16, 0xfffd, 0xABCD, 0x5648];
+        let pcs_init = [0x0000u16, 0xfffd, 0xABCD, 0x5648];
+        let addresses = [0x05u8, 0xff, 0x14, 0x54];
+        let x_addresses = [0x10u8, 0x05, 0x52, 0x42];
+        let addresses_sum = [0x15u8, 0x04, 0x66, 0x96];
+        let addresses_on_zp = [0x1015u16, 0xABDC, 0x6342, 0x9999];
+        let values = [0xffu8, 0x00, 0xab, 0x31];
+
+        for i in 0..4 {
+            memory.write(pcs[i], addresses[i]);
+            memory.write(addresses_sum[i] as u16, addresses_on_zp[i]);
+            memory.write(addresses_on_zp[i], values[i]);
+        }
+
+        for i in 0..4 {
+            let value: u8 = memory.read_indirect_x(&mut pcs[i], x_addresses[i]);
+
+            assert_eq!(value, values[i]);
+            assert_eq!(pcs[i], pcs_init[i] + 1);
+        }
+    }
+
+    #[test]
+    fn test_read_indirect_y_u8() {
+        let mut memory = Memory {
+            ..Default::default()
+        };
+
+        let mut pcs = [0x0000u16, 0xfffd, 0xABCD, 0x5648];
+        let pcs_init = [0x0000u16, 0xfffd, 0xABCD, 0x5648];
+        let addresses = [0x05u8, 0xff, 0x14, 0x54];
+        let addresses_on_zp = [0x1015u16, 0xABDC, 0x6342, 0x9999];
+        let y_addresses = [0x10u8, 0x05, 0x52, 0x42];
+        let addresses_sum = [0x1025u16, 0xABE1, 0x6394, 0x99DB];
+        let values = [0xffu8, 0x00, 0xab, 0x31];
+
+        for i in 0..4 {
+            memory.write(pcs[i], addresses[i]);
+            memory.write(addresses[i] as u16, addresses_on_zp[i]);
+            memory.write(addresses_sum[i] as u16, values[i]);
+        }
+
+        for i in 0..4 {
+            let value: u8 = memory.read_indirect_y(&mut pcs[i], y_addresses[i]);
+
+            assert_eq!(value, values[i]);
+            assert_eq!(pcs[i], pcs_init[i] + 1);
         }
     }
 
