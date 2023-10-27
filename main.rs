@@ -14,7 +14,7 @@ fn add_mod_65536(n1: u16, n2: u16) -> u16 {
 pub trait MemoryLike<T> {
     fn read(&self, addr: Word) -> T;
     fn write(&mut self, addr: Word, value: T);
-    fn read_zero_page(&self, pc: Word) -> T;
+    fn read_zero_page(&self, pc: &mut Word) -> T;
     fn read_zero_page_x(&self, pc: Word, x: Byte) -> T;
     fn read_absolute(&self, pc: Word) -> T;
     fn read_absolute_x(&self, pc: Word, x: Byte) -> T;
@@ -36,7 +36,7 @@ impl MemoryLike<u8> for Memory {
         self.ram[addr as usize] = value;
     }
 
-    fn read_zero_page(&self, pc: Word) -> u8 {
+    fn read_zero_page(&self, pc: &mut Word) -> u8 {
         todo!();
     }
 
@@ -71,7 +71,7 @@ impl MemoryLike<u16> for Memory {
         self.write(addr + 1, ((value & 0xff00) >> 8) as u8)
     }
 
-    fn read_zero_page(&self, pc: Word) -> u16 {
+    fn read_zero_page(&self, pc: &mut Word) -> u16 {
         todo!();
     }
 
@@ -1190,12 +1190,12 @@ mod tests {
         };
 
         let pc1 = 0x0000u16;
-        let pc2 = 0xffffu16;
+        let pc2 = 0xfffeu16;
         let pc3 = 0x1234u16;
         let pc4 = 0xABCDu16;
 
         let mut pcs = [pc1, pc2, pc3, pc4];
-        let addresses = [0x0000u16, 0xffffu16, 0x1234u16, 0xABCDu16];
+        let addresses = [0x0000u16, 0xfffeu16, 0x1234u16, 0xABCDu16];
         let values = [0x00u8, 0xff, 0xAB, 0x12];
 
         for i in 0..4 {
@@ -1208,6 +1208,52 @@ mod tests {
             assert_eq!(pcs[i], addresses[i] + 1);
         }
 
+    }
+
+    #[test]
+    fn test_read_zero_page_u8() {
+        let mut memory = Memory {
+            ..Default::default()
+        };
+
+        let mut pcs = [0x0000u16, 0xfffe, 0x1234, 0xabcd];
+        let pcs_init = [0x0000u16, 0xfffe, 0x1234, 0xabcd];
+        let addresses = [0x00u8, 0xff, 0x12, 0xab];
+        let values = [0x12u8, 0x00, 0xff, 0x69];
+
+        for i in 0..4 {
+            memory.write(pcs[i], addresses[i]);
+            memory.write(addresses[i] as u16, values[i]);
+        }
+
+        for i in 0..4 {
+            let value: u8 = memory.read_zero_page(&mut pcs[i]);
+            assert_eq!(value, values[i]);
+            assert_eq!(pcs[i], pcs_init[i] + 1);
+        }
+    }
+
+    #[test]
+    fn test_read_zero_page_u16() {
+        let mut memory = Memory {
+            ..Default::default()
+        };
+
+        let mut pcs = [0x0000u16, 0xfffe, 0x1234, 0xabcd];
+        let pcs_init = [0x0000u16, 0xfffe, 0x1234, 0xabcd];
+        let addresses = [0x00u8, 0xfe, 0x12, 0xab];
+        let values = [0x1234u16, 0x0000, 0xffff, 0x6969];
+
+        for i in 0..4 {
+            memory.write(pcs[i], addresses[i]);
+            memory.write(addresses[i] as u16, values[i]);
+        }
+
+        for i in 0..4 {
+            let value: u16 = memory.read_zero_page(&mut pcs[i]);
+            assert_eq!(value, values[i]);
+            assert_eq!(pcs[i], pcs_init[i] + 1);
+        }
     }
 
     macro_rules! test_ld_immediate {
