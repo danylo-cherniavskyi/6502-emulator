@@ -37,8 +37,8 @@ impl MemoryLike<u8> for Memory {
     }
 
     fn read_zero_page(&self, pc: &mut Word) -> u8 {
-        let addr_zp = self.read(*pc);
-        let value = self.read(addr_zp);
+        let addr_zp: u8 = self.read(*pc);
+        let value = self.read(addr_zp as u16);
         *pc += 1;
 
         return value;
@@ -54,7 +54,11 @@ impl MemoryLike<u8> for Memory {
     }
 
     fn read_absolute(&self, pc: &mut Word) -> u8 {
-        todo!();
+        let addr = self.read(*pc);
+        let value = self.read(addr);
+        *pc += 2;
+
+        return value;
     }
 
     fn read_absolute_x(&self, pc: &mut Word, x: Byte) -> u8 {
@@ -98,7 +102,11 @@ impl MemoryLike<u16> for Memory {
     }
 
     fn read_absolute(&self, pc: &mut Word) -> u16 {
-        todo!();
+        let addr = self.read(*pc);
+        let value = self.read(addr);
+        *pc += 2;
+
+        return value;
     }
 
     fn read_absolute_x(&self, pc: &mut Word, x: Byte) -> u16 {
