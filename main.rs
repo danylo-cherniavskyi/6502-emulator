@@ -62,7 +62,12 @@ impl MemoryLike<u8> for Memory {
     }
 
     fn read_absolute_x(&self, pc: &mut Word, x: Byte) -> u8 {
-        todo!();
+        let addr = self.read(*pc);
+        let addr_final = add_mod_65536(addr, x as u16);
+        let value = self.read(addr_final);
+        *pc += 2;
+
+        return value;
     }
 
     fn read_indirect_x(&self, pc: &mut Word, x: Byte) -> u8 {
@@ -85,8 +90,8 @@ impl MemoryLike<u16> for Memory {
     }
 
     fn read_zero_page(&self, pc: &mut Word) -> u16 {
-        let addr_zp = self.read(*pc);
-        let value = self.read(addr_zp);
+        let addr_zp: u8 = self.read(*pc);
+        let value = self.read(addr_zp as u16);
         *pc += 1;
 
         return value;
@@ -110,7 +115,12 @@ impl MemoryLike<u16> for Memory {
     }
 
     fn read_absolute_x(&self, pc: &mut Word, x: Byte) -> u16 {
-        todo!();
+        let addr = self.read(*pc);
+        let addr_final = add_mod_65536(addr, x as u16);
+        let value = self.read(addr_final);
+        *pc += 2;
+
+        return value;
     }
 
     fn read_indirect_x(&self, pc: &mut Word, x: Byte) -> u16 {
@@ -1393,7 +1403,7 @@ mod tests {
         let pcs_init = [0x0000u16, 0xfffd, 0xABCD, 0x5648];
         let addresses = [0x0010u16, 0xffed, 0x1234, 0xBADC];
         let x_addresses = [0x00u8, 0x05, 0x52, 0x42];
-        let addresses_final = [0x0010, 0xfff2, 0x1286, 0x1276];
+        let addresses_final = [0x0010, 0xfff2, 0x1286, 0xbb1e];
         let values = [0xffu8, 0x00, 0xab, 0x31];
 
         for i in 0..4 {
@@ -1419,7 +1429,7 @@ mod tests {
         let pcs_init = [0x0000u16, 0xfffd, 0xABCD, 0x5648];
         let addresses = [0x0010u16, 0xffed, 0x1234, 0xBADC];
         let x_addresses = [0x00u8, 0x05, 0x52, 0x42];
-        let addresses_final = [0x0010, 0xfff2, 0x1286, 0x1276];
+        let addresses_final = [0x0010, 0xfff2, 0x1286, 0xbb1e];
         let values = [0xffffu16, 0x0020, 0xabcd, 0x3109];
 
         for i in 0..4 {
