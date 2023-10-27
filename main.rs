@@ -19,13 +19,13 @@ pub trait MemoryLike<T> {
     fn read_zero_page_x(&self, pc: Word, x: Byte) -> T;
     fn read_absolute(&self, pc: Word) -> T;
     fn read_absolute_x(&self, pc: Word, x: Byte) -> T;
-    fn read_indirect_x(&self) -> T;
-    fn read_indirect_y(&self) -> T;
+    fn read_indirect_x(&self, pc: Word, x: Byte) -> T;
+    fn read_indirect_y(&self, pc: Word, y: Byte) -> T;
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct Memory {
-    ram: [Byte; 0xffff],
+    ram: [Byte; 0x10000],
 }
 
 impl MemoryLike<u8> for Memory {
@@ -57,11 +57,11 @@ impl MemoryLike<u8> for Memory {
         todo!();
     }
 
-    fn read_indirect_x(&self) -> u8 {
+    fn read_indirect_x(&self, pc: Word, x: Byte) -> u8 {
         todo!();
     }
 
-    fn read_indirect_y(&self) -> u8 {
+    fn read_indirect_y(&self, pc: Word, y: Byte) -> u8 {
         todo!()
     }
 }
@@ -96,24 +96,16 @@ impl MemoryLike<u16> for Memory {
         todo!();
     }
 
-    fn read_indirect_x(&self) -> u16 {
+    fn read_indirect_x(&self, pc: Word, x: Byte) -> u16 {
         todo!();
     }
 
-    fn read_indirect_y(&self) -> u16 {
+    fn read_indirect_y(&self, pc: Word, y: Byte) -> u16 {
         todo!();
     }
 }
 
 impl Memory {
-    // pub fn read(&self, addr: Word) -> Byte {
-    //     return self.ram[addr as usize];
-    // }
-
-    // pub fn read(&self, addr: Word) -> Word {
-    //     return ((self.ram[(addr + 1) as usize] as u16) << 8) | self.ram[addr as usize] as u16;
-    // }
-
     pub fn write_byte(&mut self, addr: Word, value: Byte) {
         self.ram[addr as usize] = value;
     }
@@ -126,7 +118,9 @@ impl Memory {
 
 impl Default for Memory {
     fn default() -> Self {
-        Memory { ram: [0u8; 0xffff] }
+        Memory {
+            ram: [0u8; 0x10000],
+        }
     }
 }
 
@@ -917,14 +911,14 @@ macro_rules! logic_immediate {
         fn $func_name(&mut self, memory: &Memory) {
             let value: u8 = memory.read(self.pc);
             let res = $op_func(self.a, value);
-    
+
             self.a = res;
 
             self.test_number(self.a);
 
             self.pc += 1;
             self.cycles += 2;
-            }
+        }
     };
 }
 
@@ -1029,7 +1023,7 @@ macro_rules! logic_indirect_y {
             let addr_actual = add_mod_65536(addr_on_zp, self.y as u16);
             let value: u8 = memory.read(addr_actual);
             let res = $op_func(self.a, value);
-            
+
             self.a = res;
 
             self.test_number(self.a);
@@ -1124,6 +1118,45 @@ mod tests {
 
     use super::*;
 
+    #[test]
+    fn test_read_u8() {
+        let mut memory = Memory {
+            ..Default::default()
+        };
+
+        let addresses = [0x0000u16, 0xffff, 0x6969, 0xABCD];
+        let values = [0u8, 0xff, 0x42, 0xAB];
+
+        for i in 0..4 {
+            memory.ram[addresses[i] as usize] = values[i];
+        }
+
+        for i in 0..4 {
+            let value: u8 = memory.read(addresses[i]);
+            assert_eq!(value, values[i]);
+        }
+    }
+
+    #[test]
+    fn test_read_u16() {
+        let mut memory = Memory {
+            ..Default::default()
+        };
+
+        let addresses = [0x0000u16, 0xfffe, 0x6969, 0xABCD];
+        let values = [0x0000u16, 0xffff, 0x0420, 0x1234];
+
+        for i in 0..4 {
+            memory.ram[(addresses[i]) as usize] = (values[i] & 0xff) as u8;
+            memory.ram[(addresses[i] + 1) as usize] = ((values[i] >> 8) & 0xff) as u8;
+        }
+
+        for i in 0..4 {
+            let value: u16 = memory.read(addresses[i]);
+            assert_eq!(value, values[i]);
+        }
+    }
+
     macro_rules! test_ld_immediate {
         ($func_name:ident, $reg_name:ident, $instr_name:ident) => {
             #[test]
@@ -1131,7 +1164,10 @@ mod tests {
                 let mut cpu = CPU {
                     ..Default::default()
                 };
-                let mut memory = Memory { ram: [0u8; 0xffff] };
+                let mut memory = Memory {
+                    ..Default::default()
+                };
+
                 cpu.reset();
                 let cpu_copy = cpu.clone();
 
@@ -1704,7 +1740,9 @@ mod tests {
         let mut cpu = CPU {
             ..Default::default()
         };
-        let mut memory = Memory { ram: [0u8; 0xffff] };
+        let mut memory = Memory {
+            ..Default::default()
+        };
         memory.write_byte(0x0000, Instruction::LDA_IM.into());
 
         let cpu_copy = cpu.clone();
@@ -2003,26 +2041,26 @@ mod tests {
                 let mut memory = Memory {
                     ..Default::default()
                 };
-        
+
                 cpu.reset();
                 let cpu_copy = cpu.clone();
-        
+
                 let values = [0u8, 69, (!105u8 + 1)];
-        
+
                 for i in 0..3 {
                     memory.write_byte(i, Instruction::$instr_name.into());
                 }
-        
+
                 for i in 0..3 {
                     let pc = cpu.pc;
                     let cycles = cpu.cycles;
                     let value = values[i];
                     let instruction = cpu.fetch_instruction(&memory);
-        
+
                     cpu.$reg_src = value;
-        
+
                     cpu.execute(&mut memory, instruction);
-        
+
                     assert_eq!(cpu.$reg_dest, value);
                     assert_eq!(cpu.pc, pc + 1);
                     assert_eq!(cpu.cycles, cycles + 2);
@@ -2045,9 +2083,9 @@ mod tests {
             }
         };
     }
-    
+
     test_transfer_reg_reg! {test_transfer_a_x, a, x, TAX, true}
-    
+
     test_transfer_reg_reg! {test_transfer_a_y, a, y, TAY, true}
 
     test_transfer_reg_reg! {test_transfer_x_a, x, a, TXA, true}
@@ -2069,21 +2107,21 @@ mod tests {
                 let mut memory = Memory {
                     ..Default::default()
                 };
-        
+
                 cpu.reset();
 
                 let values = [0u8, 69, (!105u8 + 1)];
-        
+
                 for i in 0..3 {
                     memory.write_byte(i, Instruction::$instr_name.into());
                 }
-        
+
                 for i in 0..3 {
                     let pc = cpu.pc;
                     let cycles = cpu.cycles;
                     let value = values[i];
                     let instruction = cpu.fetch_instruction(&memory);
-        
+
                     cpu.$reg_name = value;
 
                     cpu.execute(&mut memory, instruction);
@@ -2108,24 +2146,24 @@ mod tests {
                 let mut memory = Memory {
                     ..Default::default()
                 };
-        
+
                 cpu.reset();
-                
+
                 let values = [0u8, 69, (!105u8 + 1)];
-                
+
                 for i in 0..3 {
                     memory.write_byte(i, Instruction::$instr_name.into());
                     cpu.$reg_name = values[i as usize];
                     cpu.execute(&mut memory, Instruction::$instr_push_name.into());
                 }
                 let cpu_copy = cpu.clone();
-                
+
                 for i in 0..3 {
                     let pc = cpu.pc;
                     let cycles = cpu.cycles;
                     let value = values[values.len() - i - 1];
                     let instruction = cpu.fetch_instruction(&memory);
-        
+
                     cpu.$reg_name = value;
 
                     cpu.execute(&mut memory, instruction);
@@ -2164,30 +2202,32 @@ mod tests {
                 let mut memory = Memory {
                     ..Default::default()
                 };
-        
+
                 cpu.reset();
-        
-                let values1    = [0b0000_0000u8, 0b1111_1111, 0b0000_1111];
-                let values2    = [0b1111_1111u8, 0b0101_0101, 0b0011_0011];
-                let values_res: Vec<u8> = zip(values1, values2).map(|pair| $op_func(pair.0, pair.1)).collect();
-            
+
+                let values1 = [0b0000_0000u8, 0b1111_1111, 0b0000_1111];
+                let values2 = [0b1111_1111u8, 0b0101_0101, 0b0011_0011];
+                let values_res: Vec<u8> = zip(values1, values2)
+                    .map(|pair| $op_func(pair.0, pair.1))
+                    .collect();
+
                 for i in 0..3 {
                     memory.write_byte(2 * i, Instruction::$instr_name.into());
                     memory.write_byte(2 * i + 1, values2[i as usize]);
                 }
-        
+
                 let cpu_copy = cpu.clone();
-        
+
                 for i in 0..3 {
                     let pc = cpu.pc;
                     let cycles = cpu.cycles;
                     let value = values_res[i];
                     let instruction = cpu.fetch_instruction(&memory);
-        
+
                     cpu.a = values1[i];
-        
+
                     cpu.execute(&mut memory, instruction);
-        
+
                     assert_eq!(cpu.a, value);
                     assert_eq!(cpu.pc, pc + 2);
                     assert_eq!(cpu.cycles, cycles + 2);
@@ -2216,13 +2256,15 @@ mod tests {
                 let mut memory = Memory {
                     ..Default::default()
                 };
-        
+
                 cpu.reset();
-        
-                let values1    = [0b0000_0000u8, 0b1111_1111, 0b0000_1111];
-                let values2    = [0b1111_1111u8, 0b0101_0101, 0b0011_0011];
-                let values_res: Vec<u8> = zip(values1, values2).map(|pair| $op_func(pair.0, pair.1)).collect();
-                let addresses =  [0x10, 0xAB, 0xFF];
+
+                let values1 = [0b0000_0000u8, 0b1111_1111, 0b0000_1111];
+                let values2 = [0b1111_1111u8, 0b0101_0101, 0b0011_0011];
+                let values_res: Vec<u8> = zip(values1, values2)
+                    .map(|pair| $op_func(pair.0, pair.1))
+                    .collect();
+                let addresses = [0x10, 0xAB, 0xFF];
 
                 for i in 0..3 {
                     memory.write_byte(2 * i, Instruction::$instr_name.into());
@@ -2270,13 +2312,15 @@ mod tests {
                 let mut memory = Memory {
                     ..Default::default()
                 };
-        
+
                 cpu.reset();
-        
-                let values1    = [0b0000_0000u8, 0b1111_1111, 0b0000_1111];
-                let values2    = [0b1111_1111u8, 0b0101_0101, 0b0011_0011];
-                let values_res: Vec<u8> = zip(values1, values2).map(|pair| $op_func(pair.0, pair.1)).collect();
-                let addresses =  [0x10, 0xAB, 0xFF];
+
+                let values1 = [0b0000_0000u8, 0b1111_1111, 0b0000_1111];
+                let values2 = [0b1111_1111u8, 0b0101_0101, 0b0011_0011];
+                let values_res: Vec<u8> = zip(values1, values2)
+                    .map(|pair| $op_func(pair.0, pair.1))
+                    .collect();
+                let addresses = [0x10, 0xAB, 0xFF];
                 let x_addresses = [0x20, 0x10, 0x40];
                 let addresses_actual = [0x30, 0xBB, 0x3F];
 
@@ -2327,12 +2371,14 @@ mod tests {
                 let mut memory = Memory {
                     ..Default::default()
                 };
-        
+
                 cpu.reset();
-        
-                let values1    = [0b0000_0000u8, 0b1111_1111, 0b0000_1111];
-                let values2    = [0b1111_1111u8, 0b0101_0101, 0b0011_0011];
-                let values_res: Vec<u8> = zip(values1, values2).map(|pair| $op_func(pair.0, pair.1)).collect();
+
+                let values1 = [0b0000_0000u8, 0b1111_1111, 0b0000_1111];
+                let values2 = [0b1111_1111u8, 0b0101_0101, 0b0011_0011];
+                let values_res: Vec<u8> = zip(values1, values2)
+                    .map(|pair| $op_func(pair.0, pair.1))
+                    .collect();
                 let addresses = [0x1234, 0x4321, 0xFF24];
 
                 for i in 0..3 {
@@ -2384,9 +2430,11 @@ mod tests {
 
                 cpu.reset();
 
-                let values1    = [0b0000_0000u8, 0b1111_1111, 0b0000_1111];
-                let values2    = [0b1111_1111u8, 0b0101_0101, 0b0011_0011];
-                let values_res: Vec<u8> = zip(values1, values2).map(|pair| $op_func(pair.0, pair.1)).collect();
+                let values1 = [0b0000_0000u8, 0b1111_1111, 0b0000_1111];
+                let values2 = [0b1111_1111u8, 0b0101_0101, 0b0011_0011];
+                let values_res: Vec<u8> = zip(values1, values2)
+                    .map(|pair| $op_func(pair.0, pair.1))
+                    .collect();
                 let addresses = [0x1234, 0x0020, 0xFF24];
                 let reg_addresses = [0x21, 0x12, 0x69];
                 let addresses_actual = [0x1255, 0x0032, 0xFF8D];
@@ -2440,12 +2488,14 @@ mod tests {
                 let mut memory = Memory {
                     ..Default::default()
                 };
-        
+
                 cpu.reset();
-        
-                let values1    = [0b0000_0000u8, 0b1111_1111, 0b0000_1111];
-                let values2    = [0b1111_1111u8, 0b0101_0101, 0b0011_0011];
-                let values_res: Vec<u8> = zip(values1, values2).map(|pair| $op_func(pair.0, pair.1)).collect();
+
+                let values1 = [0b0000_0000u8, 0b1111_1111, 0b0000_1111];
+                let values2 = [0b1111_1111u8, 0b0101_0101, 0b0011_0011];
+                let values_res: Vec<u8> = zip(values1, values2)
+                    .map(|pair| $op_func(pair.0, pair.1))
+                    .collect();
                 let addresses = [0x10, 0x24, 0x70];
                 let x_addresses = [0x20, 0x35, 0xFF];
                 let addresses_zero_page_actual = [0x30, 0x59, 0x6F];
@@ -2454,7 +2504,10 @@ mod tests {
                 for i in 0..3 {
                     memory.write_byte(2 * i, Instruction::$instr_name.into());
                     memory.write_byte(2 * i + 1, addresses[i as usize]);
-                    memory.write_word(addresses_zero_page_actual[i as usize], addresses_actual[i as usize]);
+                    memory.write_word(
+                        addresses_zero_page_actual[i as usize],
+                        addresses_actual[i as usize],
+                    );
                     memory.write_byte(addresses_actual[i as usize], values2[i as usize]);
                 }
 
@@ -2499,17 +2552,19 @@ mod tests {
                 let mut memory = Memory {
                     ..Default::default()
                 };
-        
+
                 cpu.reset();
-        
-                let values1    = [0b0000_0000u8, 0b1111_1111, 0b0000_1111];
-                let values2    = [0b1111_1111u8, 0b0101_0101, 0b0011_0011];
-                let values_res: Vec<u8> = zip(values1, values2).map(|pair| $op_func(pair.0, pair.1)).collect();
+
+                let values1 = [0b0000_0000u8, 0b1111_1111, 0b0000_1111];
+                let values2 = [0b1111_1111u8, 0b0101_0101, 0b0011_0011];
+                let values_res: Vec<u8> = zip(values1, values2)
+                    .map(|pair| $op_func(pair.0, pair.1))
+                    .collect();
                 let addresses_zp = [0x10, 0x23, 0x96];
                 let addresses_in_zp = [0x1234, 0x0045, 0xABCD];
                 let y_addresses = [0x54, 0x24, 0xAB];
                 let addresses_actual = [0x1288, 0x0069, 0xAC78];
-                
+
                 let additional_cycles = [1, 0, 1];
 
                 for i in 0..3 {
@@ -2577,7 +2632,7 @@ mod tests {
     test_logic_absolute_reg! {test_and_absolute_x, |n1, n2| n1 & n2, AND_ABS_X, x}
 
     test_logic_absolute_reg! {test_eor_absolute_x, |n1, n2| n1 ^ n2, EOR_ABS_X, x}
-    
+
     test_logic_absolute_reg! {test_ora_absolute_x, |n1, n2| n1 | n2, ORA_ABS_X, x}
 
     test_logic_absolute_reg! {test_and_absolute_y, |n1, n2| n1 & n2, AND_ABS_Y, y}
@@ -2593,9 +2648,9 @@ mod tests {
     test_logic_indirect_x! {test_ora_indirect_x, |n1, n2| n1 | n2, ORA_IN_X}
 
     test_logic_indirect_y! {test_and_indirect_y, |n1, n2| n1 & n2, AND_IN_Y}
-    
+
     test_logic_indirect_y! {test_eor_indirect_y, |n1, n2| n1 ^ n2, EOR_IN_Y}
-    
+
     test_logic_indirect_y! {test_ora_indirect_y, |n1, n2| n1 | n2, ORA_IN_Y}
 
     #[test]
@@ -2609,12 +2664,12 @@ mod tests {
 
         cpu.reset();
 
-        let values1    = [0b0000_0000u8, 0b1111_1111, 0b1000_1111];
-        let values2    = [0b1111_1111u8, 0b0101_0101, 0b1011_0011];
+        let values1 = [0b0000_0000u8, 0b1111_1111, 0b1000_1111];
+        let values2 = [0b1111_1111u8, 0b0101_0101, 0b1011_0011];
         let zero_flags = [true, false, false];
         let overflow_flags = [true, true, false];
         let negative_flags = [true, false, true];
-        let addresses =  [0x10, 0xAB, 0xFF];
+        let addresses = [0x10, 0xAB, 0xFF];
 
         for i in 0..3 {
             memory.write_byte(2 * i, Instruction::BIT_ZP.into());
@@ -2659,12 +2714,12 @@ mod tests {
 
         cpu.reset();
 
-        let values1    = [0b0000_0000u8, 0b1111_1111, 0b1000_1111];
-        let values2    = [0b1111_1111u8, 0b0101_0101, 0b1011_0011];
+        let values1 = [0b0000_0000u8, 0b1111_1111, 0b1000_1111];
+        let values2 = [0b1111_1111u8, 0b0101_0101, 0b1011_0011];
         let zero_flags = [true, false, false];
         let overflow_flags = [true, true, false];
         let negative_flags = [true, false, true];
-        let addresses =  [0x1234, 0x4321, 0xABCD];
+        let addresses = [0x1234, 0x4321, 0xABCD];
 
         for i in 0..3 {
             memory.write_byte(3 * i, Instruction::BIT_ABS.into());
@@ -2697,14 +2752,15 @@ mod tests {
             assert_eq!(cpu.get_negative(), negative_flags[i]);
         }
     }
-
 }
 
 fn main() {
     let mut cpu = CPU {
         ..Default::default()
     };
-    let mut memory = Memory { ram: [0u8; 0xffff] };
+    let mut memory = Memory {
+        ..Default::default()
+    };
     cpu.reset();
 
     cpu.execute(&mut memory, Instruction::LDA_ZP);
