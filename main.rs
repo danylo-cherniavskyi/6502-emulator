@@ -1157,6 +1157,37 @@ mod tests {
         }
     }
 
+
+    #[test]
+    fn test_write_u8() {
+        let mut memory = Memory {
+            ..Default::default()
+        };
+
+        let addresses = [0x0000, 0xffff, 0xABCD, 0xFEDC];
+        let values = [0x00u8, 0xff, 0x12, 0xAB];
+
+        for i in 0..4 {
+            memory.write(addresses[i], values[i]);
+            assert_eq!(values[i], memory.read(addresses[i]));
+        }
+    }
+
+    #[test]
+    fn test_write_u16() {
+        let mut memory = Memory {
+            ..Default::default()
+        };
+
+        let addresses = [0x0000u16, 0xfffe, 0xABCD, 0xFEDC];
+        let values = [0x0000u16, 0xffff, 0x1234, 0x9876];
+
+        for i in 0..4 {
+            memory.write(addresses[i], values[i]);
+            assert_eq!(values[i], memory.read(addresses[i]));
+        }
+    }
+
     macro_rules! test_ld_immediate {
         ($func_name:ident, $reg_name:ident, $instr_name:ident) => {
             #[test]
