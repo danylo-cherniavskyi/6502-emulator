@@ -107,7 +107,10 @@ impl Memory {
     }
 
     pub fn read_immediate(&self, pc: &mut Word) -> u8 {
-        todo!();
+        let value = self.read(*pc);
+        *pc += 1;
+
+        return value;
     }
 }
 
@@ -1195,7 +1198,7 @@ mod tests {
         let pc4 = 0xABCDu16;
 
         let mut pcs = [pc1, pc2, pc3, pc4];
-        let addresses = [0x0000u16, 0xfffeu16, 0x1234u16, 0xABCDu16];
+        let addresses = [0x0010u16, 0xfffeu16, 0x1234u16, 0xABCDu16];
         let values = [0x00u8, 0xff, 0xAB, 0x12];
 
         for i in 0..4 {
