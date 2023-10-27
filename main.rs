@@ -17,7 +17,7 @@ pub trait MemoryLike<T> {
     fn read_zero_page(&self, pc: &mut Word) -> T;
     fn read_zero_page_x(&self, pc: &mut Word, x: Byte) -> T;
     fn read_absolute(&self, pc: &mut Word) -> T;
-    fn read_absolute_x(&self, pc: Word, x: Byte) -> T;
+    fn read_absolute_x(&self, pc: &mut Word, x: Byte) -> T;
     fn read_indirect_x(&self, pc: Word, x: Byte) -> T;
     fn read_indirect_y(&self, pc: Word, y: Byte) -> T;
 }
@@ -48,7 +48,7 @@ impl MemoryLike<u8> for Memory {
         todo!();
     }
 
-    fn read_absolute_x(&self, pc: Word, x: Byte) -> u8 {
+    fn read_absolute_x(&self, pc: &mut Word, x: Byte) -> u8 {
         todo!();
     }
 
@@ -83,7 +83,7 @@ impl MemoryLike<u16> for Memory {
         todo!();
     }
 
-    fn read_absolute_x(&self, pc: Word, x: Byte) -> u16 {
+    fn read_absolute_x(&self, pc: &mut Word, x: Byte) -> u16 {
         todo!();
     }
 
@@ -1348,6 +1348,58 @@ mod tests {
 
         for i in 0..4 {
             let value: u16 = memory.read_absolute(&mut pcs[i]);
+
+            assert_eq!(value, values[i]);
+            assert_eq!(pcs[i], pcs_init[i] + 2);
+        }
+    }
+
+    #[test]
+    fn test_read_absolute_x_u8() {
+        let mut memory = Memory {
+            ..Default::default()
+        };
+
+        let mut pcs = [0x0000u16, 0xfffd, 0xABCD, 0x5648];
+        let pcs_init = [0x0000u16, 0xfffd, 0xABCD, 0x5648];
+        let addresses = [0x0010u16, 0xffed, 0x1234, 0xBADC];
+        let x_addresses = [0x00u8, 0x05, 0x52, 0x42];
+        let addresses_final = [0x0010, 0xfff2, 0x1286, 0x1276];
+        let values = [0xffu8, 0x00, 0xab, 0x31];
+
+        for i in 0..4 {
+            memory.write(pcs[i], addresses[i]);
+            memory.write(addresses_final[i], values[i]);
+        }
+
+        for i in 0..4 {
+            let value: u8 = memory.read_absolute_x(&mut pcs[i], x_addresses[i]);
+
+            assert_eq!(value, values[i]);
+            assert_eq!(pcs[i], pcs_init[i] + 2);
+        }
+    }
+
+    #[test]
+    fn test_read_absolute_x_u16() {
+        let mut memory = Memory {
+            ..Default::default()
+        };
+
+        let mut pcs = [0x0000u16, 0xfffd, 0xABCD, 0x5648];
+        let pcs_init = [0x0000u16, 0xfffd, 0xABCD, 0x5648];
+        let addresses = [0x0010u16, 0xffed, 0x1234, 0xBADC];
+        let x_addresses = [0x00u8, 0x05, 0x52, 0x42];
+        let addresses_final = [0x0010, 0xfff2, 0x1286, 0x1276];
+        let values = [0xffffu16, 0x0020, 0xabcd, 0x3109];
+
+        for i in 0..4 {
+            memory.write(pcs[i], addresses[i]);
+            memory.write(addresses_final[i], values[i]);
+        }
+
+        for i in 0..4 {
+            let value: u16 = memory.read_absolute_x(&mut pcs[i], x_addresses[i]);
 
             assert_eq!(value, values[i]);
             assert_eq!(pcs[i], pcs_init[i] + 2);
