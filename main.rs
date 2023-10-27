@@ -71,11 +71,23 @@ impl MemoryLike<u8> for Memory {
     }
 
     fn read_indirect_x(&self, pc: &mut Word, x: Byte) -> u8 {
-        todo!();
+        let addr = self.read(*pc);
+        let addr_zp = add_mod_256(addr, x);
+        let addr_final = self.read(addr_zp as u16);
+        let value = self.read(addr_final);
+        *pc += 1;
+
+        return value;
     }
 
     fn read_indirect_y(&self, pc: &mut Word, y: Byte) -> u8 {
-        todo!()
+        let addr: u8 = self.read(*pc);
+        let addr_on_zp = self.read(addr as u16);
+        let addr_final = add_mod_65536(addr_on_zp, y as u16);
+        let value = self.read(addr_final);
+        *pc += 1;
+
+        return value;
     }
 }
 
