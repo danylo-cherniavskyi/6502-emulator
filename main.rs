@@ -14,7 +14,6 @@ fn add_mod_65536(n1: u16, n2: u16) -> u16 {
 pub trait MemoryLike<T> {
     fn read(&self, addr: Word) -> T;
     fn write(&mut self, addr: Word, value: T);
-    fn read_immediate(&self, pc: Word) -> T;
     fn read_zero_page(&self, pc: Word) -> T;
     fn read_zero_page_x(&self, pc: Word, x: Byte) -> T;
     fn read_absolute(&self, pc: Word) -> T;
@@ -35,10 +34,6 @@ impl MemoryLike<u8> for Memory {
 
     fn write(&mut self, addr: Word, value: u8) {
         self.ram[addr as usize] = value;
-    }
-
-    fn read_immediate(&self, pc: Word) -> u8 {
-        todo!();
     }
 
     fn read_zero_page(&self, pc: Word) -> u8 {
@@ -76,10 +71,6 @@ impl MemoryLike<u16> for Memory {
         self.write(addr + 1, ((value & 0xff00) >> 8) as u8)
     }
 
-    fn read_immediate(&self, pc: Word) -> u16 {
-        todo!();
-    }
-
     fn read_zero_page(&self, pc: Word) -> u16 {
         todo!();
     }
@@ -113,6 +104,10 @@ impl Memory {
     pub fn write_word(&mut self, addr: Word, value: Word) {
         self.write_byte(addr + 0, (value & 0x00ff) as u8);
         self.write_byte(addr + 1, ((value & 0xff00) >> 8) as u8)
+    }
+
+    pub fn read_immediate(&self, pc: &mut Word) -> u8 {
+        todo!();
     }
 }
 
@@ -1186,6 +1181,33 @@ mod tests {
             memory.write(addresses[i], values[i]);
             assert_eq!(values[i], memory.read(addresses[i]));
         }
+    }
+
+    #[test]
+    fn test_read_immediate() {
+        let mut memory = Memory {
+            ..Default::default()
+        };
+
+        let pc1 = 0x0000u16;
+        let pc2 = 0xffffu16;
+        let pc3 = 0x1234u16;
+        let pc4 = 0xABCDu16;
+
+        let mut pcs = [pc1, pc2, pc3, pc4];
+        let addresses = [0x0000u16, 0xffffu16, 0x1234u16, 0xABCDu16];
+        let values = [0x00u8, 0xff, 0xAB, 0x12];
+
+        for i in 0..4 {
+            memory.ram[pcs[i] as usize] = values[i];
+        }
+
+        for i in 0..4 {
+            let value = memory.read_immediate(&mut pcs[i]);
+            assert_eq!(value, values[i]);
+            assert_eq!(pcs[i], addresses[i] + 1);
+        }
+
     }
 
     macro_rules! test_ld_immediate {
