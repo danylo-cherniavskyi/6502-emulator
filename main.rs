@@ -11,6 +11,17 @@ fn add_mod_65536(n1: u16, n2: u16) -> u16 {
     return sum as u16;
 }
 
+#[derive(PartialEq, Eq, Hash)]
+pub enum AddressingMode {
+    Immediate,
+    ZeroPage,
+    ZeroPageReg,
+    Absolute,
+    AbsoluteReg,
+    IndirectX,
+    IndirectY
+}
+
 pub trait MemoryLike<T> {
     fn read(&self, addr: Word) -> T;
     fn write(&mut self, addr: Word, value: T);
@@ -135,11 +146,11 @@ impl MemoryLike<u16> for Memory {
         return value;
     }
 
-    fn read_indirect_x(&self, pc: &mut Word, x: Byte) -> u16 {
+    fn read_indirect_x(&self, _pc: &mut Word, _x: Byte) -> u16 {
         todo!();
     }
 
-    fn read_indirect_y(&self, pc: &mut Word, y: Byte) -> u16 {
+    fn read_indirect_y(&self, _pc: &mut Word, _y: Byte) -> u16 {
         todo!();
     }
 }
@@ -1203,7 +1214,6 @@ mod tests {
         }
     }
 
-
     #[test]
     fn test_write_u8() {
         let mut memory = Memory {
@@ -1258,7 +1268,6 @@ mod tests {
             assert_eq!(value, values[i]);
             assert_eq!(pcs[i], addresses[i] + 1);
         }
-
     }
 
     #[test]
@@ -1512,6 +1521,114 @@ mod tests {
             assert_eq!(pcs[i], pcs_init[i] + 1);
         }
     }
+
+    macro_rules! test_ld {
+        ($func_name: ident, $reg_name: ident, $instr_name: ident, $addr_mode: expr) => {
+            #[test]
+            fn $func_name() {
+                use std::collections::HashMap;
+                let mut cpu = CPU {
+                    ..Default::default()
+                };
+
+                let mut memory = Memory {
+                    ..Default::default()
+                };
+
+                cpu.reset();
+                let cpu_copy = cpu.clone();
+
+                let mut pc_increments: HashMap<AddressingMode, u16> = HashMap::new();
+                pc_increments.insert(AddressingMode::Immediate, 2);
+                pc_increments.insert(AddressingMode::ZeroPage, 2);
+                pc_increments.insert(AddressingMode::ZeroPageReg, 2);
+                pc_increments.insert(AddressingMode::Absolute, 3);
+                pc_increments.insert(AddressingMode::AbsoluteReg, 3);
+                pc_increments.insert(AddressingMode::IndirectX, 2);
+                pc_increments.insert(AddressingMode::IndirectY, 2);
+
+                let mut cycles_increments: HashMap<AddressingMode, u64> = HashMap::new();
+                cycles_increments.insert(AddressingMode::Immediate, 2);
+                cycles_increments.insert(AddressingMode::ZeroPage, 3);
+                cycles_increments.insert(AddressingMode::ZeroPageReg, 4);
+                cycles_increments.insert(AddressingMode::Absolute, 4);
+                cycles_increments.insert(AddressingMode::AbsoluteReg, 4);
+                cycles_increments.insert(AddressingMode::IndirectX, 6);
+                cycles_increments.insert(AddressingMode::IndirectY, 5);
+
+                let mut additional_cycles = [0, 0, 0, 0];
+
+                let values = [69u8, 0u8, 0xff, (!10u8 + 1)];
+                let addresses_zp = [0x13u8];
+                let x_values = [0x00u8];
+                let addresses_zp_final = [0x13u8];
+                let addresses_absolute = [0x0013u16];
+                let y_values = [0x00u8];
+                let addresses_absolute_final = [0x0013u16];
+                
+
+                for i in 0..4 {
+                    memory.write(3*i, u8::from(Instruction::$instr_name));
+                    match $addr_mode {
+                        AddressingMode::Immediate => {
+                            memory.write(3*i + 1, values[i as usize]);
+                        },
+                        AddressingMode::ZeroPage => {
+                            memory.write(3*i + 1, addresses_zp[i as usize]);
+                            memory.write(addresses_zp[i as usize] as u16, values[i as usize]);
+                        },
+                        AddressingMode::ZeroPageReg => {
+                            memory.write(3*i + 1, addresses_zp[i as usize]);
+                            memory.write(addresses_zp_final[i as usize] as u16, values[i as usize]);
+                        },
+                        AddressingMode::Absolute => {
+                            memory.write(3*i + 1, addresses_absolute[i as usize]);
+                            memory.write(addresses_absolute[i as usize], values[i as usize]);
+                        },
+                        AddressingMode::AbsoluteReg => {
+                            memory.write(3*i + 1, addresses_absolute[i as usize]);
+                            memory.write(addresses_absolute_final[i as usize], values[i as usize]);
+                        },
+                        AddressingMode::IndirectX => {
+                            memory.write(3*i + 1, addresses_zp[i as usize]);
+                            memory.write(addresses_zp_final[i as usize] as u16, addresses_absolute[i as usize]);
+                            memory.write(addresses_absolute[i as usize], values[i as usize]);
+                        },
+                        AddressingMode::IndirectY => {
+                            memory.write(3*i + 1, addresses_zp[i as usize]);
+                            memory.write(addresses_zp[i as usize] as u16, addresses_absolute[i as usize]);
+                            memory.write(addresses_absolute_final[i as usize], values[i as usize]);
+                        },
+                    }
+                }
+
+                for i in 0..4 {
+                    let pc = cpu.pc;
+                    let cycles = cpu.cycles;
+                    let value = values[i];
+                    let instruction = cpu.fetch_instruction(&memory);
+
+                    cpu.execute(&mut memory, instruction);
+
+                    assert_eq!(cpu.$reg_name, value);
+                    assert_eq!(cpu.pc, pc + pc_increments[$addr_mode]);
+                    assert_eq!(cpu.cycles, cycles + cycles_increments[$addr_mode] + additional_cycles[i]);
+                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
+                    assert_eq!(cpu.get_zero(), value == 0);
+                    assert_eq!(
+                        cpu.get_interrupt_disable(),
+                        cpu_copy.get_interrupt_disable()
+                    );
+                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
+                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
+                    assert_eq!(cpu.get_negative(), (value as i8) < 0);
+                }
+            }
+        };
+    }
+
+    test_ld! {func_name, a, LDA_IM, &AddressingMode::Immediate}
 
     macro_rules! test_ld_immediate {
         ($func_name:ident, $reg_name:ident, $instr_name:ident) => {
