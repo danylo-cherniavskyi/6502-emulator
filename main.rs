@@ -181,6 +181,17 @@ impl Default for Memory {
     }
 }
 
+#[derive(PartialEq, Eq)]
+enum Register {
+    A,
+    X,
+    Y,
+    SP,
+    I,
+    PS,
+    None,
+}
+
 #[allow(non_camel_case_types)]
 #[repr(u8)]
 pub enum Instruction {
@@ -1523,7 +1534,7 @@ mod tests {
     }
 
     macro_rules! test_ld {
-        ($func_name: ident, $reg_name: ident, $instr_name: ident, $addr_mode: expr) => {
+        ($func_name: ident, $reg_name: ident, $instr_name: ident, $addr_mode: expr, $reg_type: expr) => {
             #[test]
             fn $func_name() {
                 use std::collections::HashMap;
@@ -1559,45 +1570,67 @@ mod tests {
                 let mut additional_cycles = [0, 0, 0, 0];
 
                 let values = [69u8, 0u8, 0xff, (!10u8 + 1)];
-                let addresses_zp = [0x13u8];
-                let x_values = [0x00u8];
-                let addresses_zp_final = [0x13u8];
-                let addresses_absolute = [0x0013u16];
-                let y_values = [0x00u8];
-                let addresses_absolute_final = [0x0013u16];
-                
+                let addresses_zp = [0x13u8, 0x69, 0xFF, 0xAB];
+                let x_values = [0x10, 0x00u8, 0x16, 0x4A];
+                let y_values = [0x23, 0x00u8, 0x43, 0xBB];
+                let addresses_zp_final_x = [0x23u8, 0x69, 0x15, 0xF5];
+                let addresses_zp_final_y = [0x36u8, 0x69, 0x42, 0x66];
+                let addresses_absolute = [0x0013u16, 0xfff4, 0xABCD, 0xffff];
+                let addresses_absolute_final_x = [0x0023u16, 0xfff4, 0xABE3, 0x0049];
+                let addresses_absolute_final_y = [0x0036u16, 0xfff4, 0xAC10, 0x00BA];
 
                 for i in 0..4 {
-                    memory.write(3*i, u8::from(Instruction::$instr_name));
                     match $addr_mode {
                         AddressingMode::Immediate => {
-                            memory.write(3*i + 1, values[i as usize]);
+                            memory.write(2*i, u8::from(Instruction::$instr_name));
+                            memory.write(2*i + 1, values[i as usize]);
                         },
                         AddressingMode::ZeroPage => {
-                            memory.write(3*i + 1, addresses_zp[i as usize]);
+                            memory.write(2*i, u8::from(Instruction::$instr_name));
+                            memory.write(2*i + 1, addresses_zp[i as usize]);
                             memory.write(addresses_zp[i as usize] as u16, values[i as usize]);
                         },
                         AddressingMode::ZeroPageReg => {
-                            memory.write(3*i + 1, addresses_zp[i as usize]);
-                            memory.write(addresses_zp_final[i as usize] as u16, values[i as usize]);
+                            memory.write(2*i, u8::from(Instruction::$instr_name));
+                            memory.write(2*i + 1, addresses_zp[i as usize]);
+                            memory.write(addresses_zp_final_x[i as usize] as u16, values[i as usize]);
+                            memory.write(addresses_zp_final_y[i as usize] as u16, values[i as usize]);
                         },
                         AddressingMode::Absolute => {
+                            memory.write(3*i, u8::from(Instruction::$instr_name));
                             memory.write(3*i + 1, addresses_absolute[i as usize]);
                             memory.write(addresses_absolute[i as usize], values[i as usize]);
                         },
                         AddressingMode::AbsoluteReg => {
+                            memory.write(3*i, u8::from(Instruction::$instr_name));
                             memory.write(3*i + 1, addresses_absolute[i as usize]);
-                            memory.write(addresses_absolute_final[i as usize], values[i as usize]);
+                            memory.write(addresses_absolute_final_y[i as usize], values[i as usize]);
+                            if $reg_type == Register::X {
+                                memory.write(addresses_absolute_final_x[i as usize], values[i as usize]);
+                                if addresses_absolute_final_x[i as usize] > 0xff {
+                                    additional_cycles[i as usize] += 1;
+                                } 
+                            } else if $reg_type == Register::Y {
+                                memory.write(addresses_absolute_final_y[i as usize], values[i as usize]);
+                                if addresses_absolute_final_y[i as usize] > 0xff {
+                                    additional_cycles[i as usize] += 1;
+                                } 
+                            }
                         },
                         AddressingMode::IndirectX => {
-                            memory.write(3*i + 1, addresses_zp[i as usize]);
-                            memory.write(addresses_zp_final[i as usize] as u16, addresses_absolute[i as usize]);
+                            memory.write(2*i, u8::from(Instruction::$instr_name));
+                            memory.write(2*i + 1, addresses_zp[i as usize]);
+                            memory.write(addresses_zp_final_x[i as usize] as u16, addresses_absolute[i as usize]);
                             memory.write(addresses_absolute[i as usize], values[i as usize]);
                         },
                         AddressingMode::IndirectY => {
-                            memory.write(3*i + 1, addresses_zp[i as usize]);
+                            memory.write(2*i, u8::from(Instruction::$instr_name));
+                            memory.write(2*i + 1, addresses_zp[i as usize]);
                             memory.write(addresses_zp[i as usize] as u16, addresses_absolute[i as usize]);
-                            memory.write(addresses_absolute_final[i as usize], values[i as usize]);
+                            memory.write(addresses_absolute_final_y[i as usize], values[i as usize]);
+                            if addresses_absolute_final_y[i as usize] > 0xff {
+                                additional_cycles[i as usize] += 1;
+                            }
                         },
                     }
                 }
@@ -1608,6 +1641,8 @@ mod tests {
                     let value = values[i];
                     let instruction = cpu.fetch_instruction(&memory);
 
+                    cpu.x = x_values[i];
+                    cpu.y = y_values[i];
                     cpu.execute(&mut memory, instruction);
 
                     assert_eq!(cpu.$reg_name, value);
@@ -1628,7 +1663,7 @@ mod tests {
         };
     }
 
-    test_ld! {func_name, a, LDA_IM, &AddressingMode::Immediate}
+    test_ld! {func_name, a, LDA_IM, &AddressingMode::Immediate, Register::None}
 
     macro_rules! test_ld_immediate {
         ($func_name:ident, $reg_name:ident, $instr_name:ident) => {
