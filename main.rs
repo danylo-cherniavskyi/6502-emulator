@@ -182,7 +182,7 @@ impl Default for Memory {
 }
 
 #[derive(PartialEq, Eq)]
-enum Register {
+pub enum Register {
     A,
     X,
     Y,
@@ -1534,6 +1534,7 @@ mod tests {
     }
 
     macro_rules! test_ld {
+        // reg_type is required for ABS_REG instructions only. For other instructions use Register::None
         ($func_name: ident, $reg_name: ident, $instr_name: ident, $addr_mode: expr, $reg_type: expr) => {
             #[test]
             fn $func_name() {
@@ -1663,255 +1664,30 @@ mod tests {
         };
     }
 
-    test_ld! {func_name, a, LDA_IM, &AddressingMode::Immediate, Register::None}
+    // LDA
+    test_ld! {test_lda_immediate, a, LDA_IM, &AddressingMode::Immediate, Register::None}
+    test_ld! {test_lda_zero_page, a, LDA_ZP, &AddressingMode::ZeroPage, Register::None}
+    test_ld! {test_lda_zero_page_x, a, LDA_ZP_X, &AddressingMode::ZeroPageReg, Register::None}
+    test_ld! {test_lda_absolute, a, LDA_ABS, &AddressingMode::Absolute, Register::None}
+    test_ld! {test_lda_absolute_x, a, LDA_ABS_X, &AddressingMode::AbsoluteReg, Register::X}
+    test_ld! {test_lda_absolute_y, a, LDA_ABS_Y, &AddressingMode::AbsoluteReg, Register::Y}
+    test_ld! {test_lda_indirect_x, a, LDA_IN_X, &AddressingMode::IndirectX, Register::None}
+    test_ld! {test_lda_indirect_y, a, LDA_IN_Y, &AddressingMode::IndirectY, Register::None}
 
-    macro_rules! test_ld_immediate {
-        ($func_name:ident, $reg_name:ident, $instr_name:ident) => {
-            #[test]
-            fn $func_name() {
-                let mut cpu = CPU {
-                    ..Default::default()
-                };
-                let mut memory = Memory {
-                    ..Default::default()
-                };
+    // LDX
+    test_ld! {test_ldx_immediate, x, LDX_IM, &AddressingMode::Immediate, Register::None}
+    test_ld! {test_ldx_zero_page, x, LDX_ZP, &AddressingMode::ZeroPage, Register::None}
+    test_ld! {test_ldx_zero_page_y, x, LDX_ZP_Y, &AddressingMode::ZeroPageReg, Register::None}
+    test_ld! {test_ldx_absolute, x, LDX_ABS, &AddressingMode::Absolute, Register::None}
+    test_ld! {test_ldx_absolute_y, x, LDX_ABS_Y, &AddressingMode::AbsoluteReg, Register::Y}
 
-                cpu.reset();
-                let cpu_copy = cpu.clone();
+    // LDY
+    test_ld! {test_ldy_immediate, y, LDY_IM, &AddressingMode::Immediate, Register::None}
+    test_ld! {test_ldy_zero_page, y, LDY_ZP, &AddressingMode::ZeroPage, Register::None}
+    test_ld! {test_ldy_zero_page_x, y, LDY_ZP_X, &AddressingMode::ZeroPageReg, Register::None}
+    test_ld! {test_ldy_absolute, y, LDY_ABS, &AddressingMode::Absolute, Register::None}
+    test_ld! {test_ldy_absolute_x, y, LDY_ABS_X, &AddressingMode::AbsoluteReg, Register::X}
 
-                let values = [0u8, 69, (!10u8 + 1)];
-
-                for i in 0..3 {
-                    memory.write_byte(i * 2, Instruction::$instr_name.into());
-                    memory.write_byte(i * 2 + 1, values[i as usize]);
-                }
-
-                for value in values {
-                    let pc = cpu.pc;
-                    let cycles = cpu.cycles;
-                    let instruction = cpu.fetch_instruction(&memory);
-                    cpu.execute(&mut memory, instruction);
-
-                    assert_eq!(cpu.$reg_name, value);
-                    assert_eq!(cpu.pc, pc + 2);
-                    assert_eq!(cpu.cycles, cycles + 2);
-                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
-                    assert_eq!(cpu.get_zero(), value == 0);
-                    assert_eq!(
-                        cpu.get_interrupt_disable(),
-                        cpu_copy.get_interrupt_disable()
-                    );
-                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
-                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
-                    assert_eq!(cpu.get_negative(), (value as i8) < 0);
-                }
-            }
-        };
-    }
-
-    macro_rules! test_ld_zero_page {
-        ($func_name:ident, $reg_name:ident, $instr_name:ident) => {
-            #[test]
-            fn $func_name() {
-                let mut cpu = CPU {
-                    ..Default::default()
-                };
-                let mut memory = Memory {
-                    ..Default::default()
-                };
-
-                cpu.reset();
-                let cpu_copy = cpu.clone();
-
-                let values = [0u8, 13, (!105u8 + 1)];
-                let addresses = [0x13, 0x5A, 0xff];
-
-                for i in 0..3 {
-                    memory.write_byte(2 * i + 0, Instruction::$instr_name.into());
-                    memory.write_byte(2 * i + 1, addresses[i as usize]);
-                    memory.write_byte(addresses[i as usize] as u16, values[i as usize]);
-                }
-
-                for value in values {
-                    let pc = cpu.pc;
-                    let cycles = cpu.cycles;
-                    let instruction = cpu.fetch_instruction(&memory);
-                    cpu.execute(&mut memory, instruction);
-
-                    assert_eq!(cpu.$reg_name, value);
-                    assert_eq!(cpu.pc, pc + 2);
-                    assert_eq!(cpu.cycles, cycles + 3);
-                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
-                    assert_eq!(cpu.get_zero(), value == 0);
-                    assert_eq!(
-                        cpu.get_interrupt_disable(),
-                        cpu_copy.get_interrupt_disable()
-                    );
-                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
-                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
-                    assert_eq!(cpu.get_negative(), (value as i8) < 0);
-                }
-            }
-        };
-    }
-
-    macro_rules! test_ld_zero_page_reg {
-        ($func_name:ident, $reg_name:ident, $instr_name:ident, $addr_reg:ident) => {
-            #[test]
-            fn $func_name() {
-                let mut cpu = CPU {
-                    ..Default::default()
-                };
-                let mut memory = Memory {
-                    ..Default::default()
-                };
-
-                cpu.reset();
-                let cpu_copy = cpu.clone();
-
-                let values = [0u8, 45, (!105u8 + 1)];
-                let addresses = [0x32u8, 0xBF, 0xFF];
-                let addr_reg_values = [0x57u8, 0x64, 0x10];
-
-                let addresses_actual = [0x89, 0x23, 0x0f];
-
-                for i in 0..3 {
-                    memory.write_byte(2 * i + 0, Instruction::$instr_name.into());
-                    memory.write_byte(2 * i + 1, addresses[i as usize]);
-                    memory.write_byte(addresses_actual[i as usize], values[i as usize]);
-                }
-
-                for i in 0..3 {
-                    let pc = cpu.pc;
-                    let cycles = cpu.cycles;
-                    let value = values[i];
-                    cpu.$addr_reg = addr_reg_values[i];
-                    let instruction = cpu.fetch_instruction(&memory);
-
-                    cpu.execute(&mut memory, instruction);
-
-                    assert_eq!(cpu.$reg_name, value);
-                    assert_eq!(cpu.$addr_reg, addr_reg_values[i]);
-                    assert_eq!(cpu.pc, pc + 2);
-                    assert_eq!(cpu.cycles, cycles + 4);
-                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
-                    assert_eq!(cpu.get_zero(), value == 0);
-                    assert_eq!(
-                        cpu.get_interrupt_disable(),
-                        cpu_copy.get_interrupt_disable()
-                    );
-                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
-                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
-                    assert_eq!(cpu.get_negative(), (value as i8) < 0);
-                }
-            }
-        };
-    }
-
-    macro_rules! test_ld_absolute {
-        ($func_name:ident, $reg_name:ident, $instr_name:ident) => {
-            #[test]
-            fn $func_name() {
-                let mut cpu = CPU {
-                    ..Default::default()
-                };
-                let mut memory = Memory {
-                    ..Default::default()
-                };
-
-                cpu.reset();
-                let cpu_copy = cpu.clone();
-
-                let values = [0u8, 45, (!105u8 + 1)];
-                let addresses = [0x1234u16, 0x4321, 0xfff0];
-
-                for i in 0..3 {
-                    memory.write_byte(3 * i + 0, Instruction::$instr_name.into());
-                    memory.write_word(3 * i + 1, addresses[i as usize]);
-                    memory.write_byte(addresses[i as usize], values[i as usize]);
-                }
-
-                for value in values {
-                    let pc = cpu.pc;
-                    let cycles = cpu.cycles;
-                    let instruction = cpu.fetch_instruction(&memory);
-
-                    cpu.execute(&mut memory, instruction);
-
-                    assert_eq!(cpu.$reg_name, value);
-                    assert_eq!(cpu.pc, pc + 3);
-                    assert_eq!(cpu.cycles, cycles + 4);
-                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
-                    assert_eq!(cpu.get_zero(), value == 0);
-                    assert_eq!(
-                        cpu.get_interrupt_disable(),
-                        cpu_copy.get_interrupt_disable()
-                    );
-                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
-                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
-                    assert_eq!(cpu.get_negative(), (value as i8) < 0);
-                }
-            }
-        };
-    }
-
-    macro_rules! test_ld_absolute_reg {
-        ($func_name:ident, $reg_name:ident, $instr_name:ident, $addr_reg:ident) => {
-            #[test]
-            fn $func_name() {
-                let mut cpu = CPU {
-                    ..Default::default()
-                };
-                let mut memory = Memory {
-                    ..Default::default()
-                };
-
-                cpu.reset();
-                let cpu_copy = cpu.clone();
-
-                let values = [0u8, 45, (!105u8 + 1)];
-                let addresses = [0x1234u16, 0x0010, 0xfff0];
-                let addr_reg_addresses = [0xff, 0xAB, 0x00];
-                let addresses_actual = [0x1333u16, 0x00BB, 0xfff0];
-                let additional_cycles = [1, 0, 1];
-
-                for i in 0..3 {
-                    memory.write_byte(3 * i + 0, Instruction::$instr_name.into());
-                    memory.write_word(3 * i + 1, addresses[i as usize]);
-                    memory.write_byte(addresses_actual[i as usize], values[i as usize])
-                }
-
-                for i in 0..3 {
-                    let pc = cpu.pc;
-                    let cycles = cpu.cycles;
-                    let value = values[i];
-                    cpu.$addr_reg = addr_reg_addresses[i];
-                    let instruction = cpu.fetch_instruction(&memory);
-
-                    cpu.execute(&mut memory, instruction);
-
-                    assert_eq!(cpu.$reg_name, value);
-                    assert_eq!(cpu.$addr_reg, addr_reg_addresses[i]);
-                    assert_eq!(cpu.pc, pc + 3);
-                    assert_eq!(cpu.cycles, cycles + 4 + additional_cycles[i]);
-                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
-                    assert_eq!(cpu.get_zero(), value == 0);
-                    assert_eq!(
-                        cpu.get_interrupt_disable(),
-                        cpu_copy.get_interrupt_disable()
-                    );
-                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
-                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
-                    assert_eq!(cpu.get_negative(), (value as i8) < 0);
-                }
-            }
-        };
-    }
 
     macro_rules! test_st_zero_page {
         ($func_name: ident, $reg_name: ident, $instr_name: ident) => {
@@ -2263,149 +2039,6 @@ mod tests {
             Instruction::LDA_IM.into()
         );
     }
-
-    // LDA
-
-    test_ld_immediate! {test_lda_immediate, a, LDA_IM}
-
-    test_ld_zero_page! {test_lda_zero_page, a, LDA_ZP}
-
-    test_ld_zero_page_reg! {test_lda_zero_page_x, a, LDA_ZP_X, x}
-
-    test_ld_absolute! {test_lda_absolute, a, LDA_ABS}
-
-    test_ld_absolute_reg! {test_lda_absolute_x, a, LDA_ABS_X, x}
-
-    test_ld_absolute_reg! {test_lda_absolute_y, a, LDA_ABS_Y, y}
-
-    #[test]
-    fn test_lda_indirect_x() {
-        let mut cpu = CPU {
-            ..Default::default()
-        };
-        let mut memory = Memory {
-            ..Default::default()
-        };
-
-        cpu.reset();
-        let cpu_copy = cpu.clone();
-
-        let values = [0u8, 23, (!105u8 + 1)];
-        let value_addresses = [0x1234, 0x4321, 0xABCD];
-        let x_addresses = [0x10, 0x35, 0xAB];
-        let addresses = [0x62, 0x34, 0x10];
-        let addresses_actual = [0x72, 0x69, 0xBB];
-
-        for i in 0..3 {
-            memory.write_byte(i * 2 + 0, Instruction::LDA_IN_X.into());
-            memory.write_byte(i * 2 + 1, addresses[i as usize]);
-
-            memory.write_byte(value_addresses[i as usize], values[i as usize]);
-            memory.write_word(addresses_actual[i as usize], value_addresses[i as usize]);
-        }
-
-        for i in 0..3 {
-            let pc = cpu.pc;
-            let cycles = cpu.cycles;
-            let value = values[i];
-            cpu.x = x_addresses[i];
-            let instruction = cpu.fetch_instruction(&memory);
-
-            cpu.execute(&mut memory, instruction);
-
-            assert_eq!(cpu.a, value);
-            assert_eq!(cpu.x, x_addresses[i]);
-            assert_eq!(cpu.pc, pc + 2);
-            assert_eq!(cpu.cycles, cycles + 6);
-            assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
-            assert_eq!(cpu.get_zero(), value == 0);
-            assert_eq!(
-                cpu.get_interrupt_disable(),
-                cpu_copy.get_interrupt_disable()
-            );
-            assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-            assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
-            assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
-            assert_eq!(cpu.get_negative(), (value as i8) < 0);
-        }
-    }
-
-    #[test]
-    fn test_lda_indirect_y() {
-        let mut cpu = CPU {
-            ..Default::default()
-        };
-        let mut memory = Memory {
-            ..Default::default()
-        };
-
-        cpu.reset();
-        let cpu_copy = cpu.clone();
-
-        let values = [0u8, 23, (!105u8 + 1)];
-        let address_addresses = [0x62, 0x34, 0x10];
-        let addresses = [0x1224, 0x0034, 0xAB22];
-        let y_addresses = [0x10, 0x35, 0xAB];
-        let value_addresses = [0x1234, 0x0069, 0xABCD];
-        let additional_cycles = [1, 0, 1];
-
-        for i in 0..3 {
-            memory.write_byte(i * 2 + 0, Instruction::LDA_IN_Y.into());
-            memory.write_byte(i * 2 + 1, address_addresses[i as usize]);
-
-            memory.write_byte(value_addresses[i as usize], values[i as usize]);
-            memory.write_word(address_addresses[i as usize] as u16, addresses[i as usize]);
-        }
-
-        for i in 0..3 {
-            let pc = cpu.pc;
-            let cycles = cpu.cycles;
-            let value = values[i];
-            cpu.y = y_addresses[i];
-            let instruction = cpu.fetch_instruction(&memory);
-
-            cpu.execute(&mut memory, instruction);
-
-            assert_eq!(cpu.a, value);
-            assert_eq!(cpu.y, y_addresses[i]);
-            assert_eq!(cpu.pc, pc + 2);
-            assert_eq!(cpu.cycles, cycles + 5 + additional_cycles[i]);
-            assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
-            assert_eq!(cpu.get_zero(), value == 0);
-            assert_eq!(
-                cpu.get_interrupt_disable(),
-                cpu_copy.get_interrupt_disable()
-            );
-            assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-            assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
-            assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
-            assert_eq!(cpu.get_negative(), (value as i8) < 0);
-        }
-    }
-
-    // LDX
-
-    test_ld_immediate! {test_ldx_immediate, x, LDX_IM}
-
-    test_ld_zero_page! {test_ldx_zero_page, x, LDX_ZP}
-
-    test_ld_zero_page_reg! {test_ldx_zero_page_y, x, LDX_ZP_Y, y}
-
-    test_ld_absolute! {test_ldx_absolute, x, LDX_ABS}
-
-    test_ld_absolute_reg! {test_ldx_absolute_y, x, LDX_ABS_Y, y}
-
-    // LDY
-
-    test_ld_immediate! {test_ldy_immediate, y, LDY_IM}
-
-    test_ld_zero_page! {test_ldy_zero_page, y, LDY_ZP}
-
-    test_ld_zero_page_reg! {test_ldy_zero_page_x, y, LDY_ZP_X, x}
-
-    test_ld_absolute! {test_ldy_absolute, y, LDY_ABS}
-
-    test_ld_absolute_reg! {test_ldy_absolute_x, y, LDY_ABS_X, x}
 
     // STA
     test_st_zero_page! {test_sta_zero_page, a, STA_ZP}
