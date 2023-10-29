@@ -1535,7 +1535,7 @@ mod tests {
 
     macro_rules! test_ld {
         // reg_type is required for ABS_REG instructions only. For other instructions use Register::None
-        ($func_name: ident, $reg_name: ident, $instr_name: ident, $addr_mode: expr, $reg_type: expr) => {
+        ($func_name: ident, $reg_name: ident, $instr_name: expr, $addr_mode: expr, $reg_type: expr) => {
             #[test]
             fn $func_name() {
                 use std::collections::HashMap;
@@ -1583,16 +1583,16 @@ mod tests {
                 for i in 0..4 {
                     match $addr_mode {
                         AddressingMode::Immediate => {
-                            memory.write(2 * i, u8::from(Instruction::$instr_name));
+                            memory.write(2 * i, u8::from($instr_name));
                             memory.write(2 * i + 1, values[i as usize]);
                         }
                         AddressingMode::ZeroPage => {
-                            memory.write(2 * i, u8::from(Instruction::$instr_name));
+                            memory.write(2 * i, u8::from($instr_name));
                             memory.write(2 * i + 1, addresses_zp[i as usize]);
                             memory.write(addresses_zp[i as usize] as u16, values[i as usize]);
                         }
                         AddressingMode::ZeroPageReg => {
-                            memory.write(2 * i, u8::from(Instruction::$instr_name));
+                            memory.write(2 * i, u8::from($instr_name));
                             memory.write(2 * i + 1, addresses_zp[i as usize]);
                             memory
                                 .write(addresses_zp_final_x[i as usize] as u16, values[i as usize]);
@@ -1600,12 +1600,12 @@ mod tests {
                                 .write(addresses_zp_final_y[i as usize] as u16, values[i as usize]);
                         }
                         AddressingMode::Absolute => {
-                            memory.write(3 * i, u8::from(Instruction::$instr_name));
+                            memory.write(3 * i, u8::from($instr_name));
                             memory.write(3 * i + 1, addresses_absolute[i as usize]);
                             memory.write(addresses_absolute[i as usize], values[i as usize]);
                         }
                         AddressingMode::AbsoluteReg => {
-                            memory.write(3 * i, u8::from(Instruction::$instr_name));
+                            memory.write(3 * i, u8::from($instr_name));
                             memory.write(3 * i + 1, addresses_absolute[i as usize]);
                             memory
                                 .write(addresses_absolute_final_y[i as usize], values[i as usize]);
@@ -1628,7 +1628,7 @@ mod tests {
                             }
                         }
                         AddressingMode::IndirectX => {
-                            memory.write(2 * i, u8::from(Instruction::$instr_name));
+                            memory.write(2 * i, u8::from($instr_name));
                             memory.write(2 * i + 1, addresses_zp[i as usize]);
                             memory.write(
                                 addresses_zp_final_x[i as usize] as u16,
@@ -1637,7 +1637,7 @@ mod tests {
                             memory.write(addresses_absolute[i as usize], values[i as usize]);
                         }
                         AddressingMode::IndirectY => {
-                            memory.write(2 * i, u8::from(Instruction::$instr_name));
+                            memory.write(2 * i, u8::from($instr_name));
                             memory.write(2 * i + 1, addresses_zp[i as usize]);
                             memory.write(
                                 addresses_zp[i as usize] as u16,
@@ -1684,31 +1684,31 @@ mod tests {
     }
 
     // LDA
-    test_ld! {test_lda_immediate, a, LDA_IM, &AddressingMode::Immediate, Register::None}
-    test_ld! {test_lda_zero_page, a, LDA_ZP, &AddressingMode::ZeroPage, Register::None}
-    test_ld! {test_lda_zero_page_x, a, LDA_ZP_X, &AddressingMode::ZeroPageReg, Register::None}
-    test_ld! {test_lda_absolute, a, LDA_ABS, &AddressingMode::Absolute, Register::None}
-    test_ld! {test_lda_absolute_x, a, LDA_ABS_X, &AddressingMode::AbsoluteReg, Register::X}
-    test_ld! {test_lda_absolute_y, a, LDA_ABS_Y, &AddressingMode::AbsoluteReg, Register::Y}
-    test_ld! {test_lda_indirect_x, a, LDA_IN_X, &AddressingMode::IndirectX, Register::None}
-    test_ld! {test_lda_indirect_y, a, LDA_IN_Y, &AddressingMode::IndirectY, Register::None}
+    test_ld! {test_lda_immediate, a, Instruction::LDA_IM, &AddressingMode::Immediate, Register::None}
+    test_ld! {test_lda_zero_page, a, Instruction::LDA_ZP, &AddressingMode::ZeroPage, Register::None}
+    test_ld! {test_lda_zero_page_x, a, Instruction::LDA_ZP_X, &AddressingMode::ZeroPageReg, Register::None}
+    test_ld! {test_lda_absolute, a, Instruction::LDA_ABS, &AddressingMode::Absolute, Register::None}
+    test_ld! {test_lda_absolute_x, a, Instruction::LDA_ABS_X, &AddressingMode::AbsoluteReg, Register::X}
+    test_ld! {test_lda_absolute_y, a, Instruction::LDA_ABS_Y, &AddressingMode::AbsoluteReg, Register::Y}
+    test_ld! {test_lda_indirect_x, a, Instruction::LDA_IN_X, &AddressingMode::IndirectX, Register::None}
+    test_ld! {test_lda_indirect_y, a, Instruction::LDA_IN_Y, &AddressingMode::IndirectY, Register::None}
 
     // LDX
-    test_ld! {test_ldx_immediate, x, LDX_IM, &AddressingMode::Immediate, Register::None}
-    test_ld! {test_ldx_zero_page, x, LDX_ZP, &AddressingMode::ZeroPage, Register::None}
-    test_ld! {test_ldx_zero_page_y, x, LDX_ZP_Y, &AddressingMode::ZeroPageReg, Register::None}
-    test_ld! {test_ldx_absolute, x, LDX_ABS, &AddressingMode::Absolute, Register::None}
-    test_ld! {test_ldx_absolute_y, x, LDX_ABS_Y, &AddressingMode::AbsoluteReg, Register::Y}
+    test_ld! {test_ldx_immediate, x, Instruction::LDX_IM, &AddressingMode::Immediate, Register::None}
+    test_ld! {test_ldx_zero_page, x, Instruction::LDX_ZP, &AddressingMode::ZeroPage, Register::None}
+    test_ld! {test_ldx_zero_page_y, x, Instruction::LDX_ZP_Y, &AddressingMode::ZeroPageReg, Register::None}
+    test_ld! {test_ldx_absolute, x, Instruction::LDX_ABS, &AddressingMode::Absolute, Register::None}
+    test_ld! {test_ldx_absolute_y, x, Instruction::LDX_ABS_Y, &AddressingMode::AbsoluteReg, Register::Y}
 
     // LDY
-    test_ld! {test_ldy_immediate, y, LDY_IM, &AddressingMode::Immediate, Register::None}
-    test_ld! {test_ldy_zero_page, y, LDY_ZP, &AddressingMode::ZeroPage, Register::None}
-    test_ld! {test_ldy_zero_page_x, y, LDY_ZP_X, &AddressingMode::ZeroPageReg, Register::None}
-    test_ld! {test_ldy_absolute, y, LDY_ABS, &AddressingMode::Absolute, Register::None}
-    test_ld! {test_ldy_absolute_x, y, LDY_ABS_X, &AddressingMode::AbsoluteReg, Register::X}
+    test_ld! {test_ldy_immediate, y, Instruction::LDY_IM, &AddressingMode::Immediate, Register::None}
+    test_ld! {test_ldy_zero_page, y, Instruction::LDY_ZP, &AddressingMode::ZeroPage, Register::None}
+    test_ld! {test_ldy_zero_page_x, y, Instruction::LDY_ZP_X, &AddressingMode::ZeroPageReg, Register::None}
+    test_ld! {test_ldy_absolute, y, Instruction::LDY_ABS, &AddressingMode::Absolute, Register::None}
+    test_ld! {test_ldy_absolute_x, y, Instruction::LDY_ABS_X, &AddressingMode::AbsoluteReg, Register::X}
 
     macro_rules! test_st {
-        ($func_name: ident, $reg_name: ident, $instr_name: ident, $addr_mode: expr, $reg_type: expr) => {
+        ($func_name: ident, $reg_name: ident, $instr_name: expr, $addr_mode: expr, $reg_type: expr) => {
             #[test]
             fn $func_name() {
                 use std::collections::HashMap;
@@ -1753,12 +1753,12 @@ mod tests {
                 for i in 0..4 {
                     match $addr_mode {
                         AddressingMode::ZeroPage => {
-                            memory.write(2 * i, u8::from(Instruction::$instr_name));
+                            memory.write(2 * i, u8::from($instr_name));
                             memory.write(2 * i + 1, addresses_zp[i as usize]);
                             addresses_final[i as usize] = addresses_zp[i as usize] as u16;
                         }
                         AddressingMode::ZeroPageReg => {
-                            memory.write(2 * i, u8::from(Instruction::$instr_name));
+                            memory.write(2 * i, u8::from($instr_name));
                             memory.write(2 * i + 1, addresses_zp[i as usize]);
                             if $reg_type == Register::X {
                                 addresses_final[i as usize] =
@@ -1769,12 +1769,12 @@ mod tests {
                             }
                         }
                         AddressingMode::Absolute => {
-                            memory.write(3 * i, u8::from(Instruction::$instr_name));
+                            memory.write(3 * i, u8::from($instr_name));
                             memory.write(3 * i + 1, addresses_absolute[i as usize]);
                             addresses_final[i as usize] = addresses_absolute[i as usize];
                         }
                         AddressingMode::AbsoluteReg => {
-                            memory.write(3 * i, u8::from(Instruction::$instr_name));
+                            memory.write(3 * i, u8::from($instr_name));
                             memory.write(3 * i + 1, addresses_absolute[i as usize]);
                             if $reg_type == Register::X {
                                 addresses_final[i as usize] =
@@ -1785,7 +1785,7 @@ mod tests {
                             }
                         }
                         AddressingMode::IndirectX => {
-                            memory.write(2 * i, u8::from(Instruction::$instr_name));
+                            memory.write(2 * i, u8::from($instr_name));
                             memory.write(2 * i + 1, addresses_zp[i as usize]);
                             memory.write(
                                 addresses_zp_final_x[i as usize] as u16,
@@ -1794,7 +1794,7 @@ mod tests {
                             addresses_final[i as usize] = addresses_absolute[i as usize];
                         }
                         AddressingMode::IndirectY => {
-                            memory.write(2 * i, u8::from(Instruction::$instr_name));
+                            memory.write(2 * i, u8::from($instr_name));
                             memory.write(2 * i + 1, addresses_zp[i as usize]);
                             memory.write(
                                 addresses_zp[i as usize] as u16,
@@ -1842,25 +1842,25 @@ mod tests {
     }
 
     // STA
-    test_st! {test_sta_zero_page, a, STA_ZP, &AddressingMode::ZeroPage, Register::None}
-    test_st! {test_sta_zero_page_x, a, STA_ZP_X, &AddressingMode::ZeroPageReg, Register::X}
-    test_st! {test_sta_absolute, a, STA_ABS, &AddressingMode::Absolute, Register::None}
-    test_st! {test_sta_absolute_x, a, STA_ABS_X, &AddressingMode::AbsoluteReg, Register::X}
-    test_st! {test_sta_absolute_y, a, STA_ABS_Y, &AddressingMode::AbsoluteReg, Register::Y}
-    test_st! {test_sta_indirect_x, a, STA_IN_X, &AddressingMode::IndirectX, Register::None}
-    test_st! {test_sta_indirect_y, a, STA_IN_Y, &AddressingMode::IndirectY, Register::None}
+    test_st! {test_sta_zero_page, a, Instruction::STA_ZP, &AddressingMode::ZeroPage, Register::None}
+    test_st! {test_sta_zero_page_x, a, Instruction::STA_ZP_X, &AddressingMode::ZeroPageReg, Register::X}
+    test_st! {test_sta_absolute, a, Instruction::STA_ABS, &AddressingMode::Absolute, Register::None}
+    test_st! {test_sta_absolute_x, a, Instruction::STA_ABS_X, &AddressingMode::AbsoluteReg, Register::X}
+    test_st! {test_sta_absolute_y, a, Instruction::STA_ABS_Y, &AddressingMode::AbsoluteReg, Register::Y}
+    test_st! {test_sta_indirect_x, a, Instruction::STA_IN_X, &AddressingMode::IndirectX, Register::None}
+    test_st! {test_sta_indirect_y, a, Instruction::STA_IN_Y, &AddressingMode::IndirectY, Register::None}
     // STX
-    test_st! {test_stx_zero_page, x, STX_ZP, &AddressingMode::ZeroPage, Register::None}
-    test_st! {test_stx_zero_page_y, x, STX_ZP_Y, &AddressingMode::ZeroPageReg, Register::Y}
-    test_st! {test_stx_absolute, x, STX_ABS, &AddressingMode::Absolute, Register::None}
+    test_st! {test_stx_zero_page, x, Instruction::STX_ZP, &AddressingMode::ZeroPage, Register::None}
+    test_st! {test_stx_zero_page_y, x, Instruction::STX_ZP_Y, &AddressingMode::ZeroPageReg, Register::Y}
+    test_st! {test_stx_absolute, x, Instruction::STX_ABS, &AddressingMode::Absolute, Register::None}
     // STY
-    test_st! {test_sty_zero_page, y, STY_ZP, &AddressingMode::ZeroPage, Register::None}
-    test_st! {test_sty_zero_page_x, y, STY_ZP_X, &AddressingMode::ZeroPageReg, Register::X}
-    test_st! {test_sty_absolute, y, STY_ABS, &AddressingMode::Absolute, Register::None}
+    test_st! {test_sty_zero_page, y, Instruction::STY_ZP, &AddressingMode::ZeroPage, Register::None}
+    test_st! {test_sty_zero_page_x, y, Instruction::STY_ZP_X, &AddressingMode::ZeroPageReg, Register::X}
+    test_st! {test_sty_absolute, y, Instruction::STY_ABS, &AddressingMode::Absolute, Register::None}
 
     // Transfer
     macro_rules! test_transfer_reg_reg {
-        ($func_name: ident, $reg_src: ident, $reg_dest: ident, $instr_name: ident, $test_flags_en: expr) => {
+        ($func_name: ident, $reg_src: ident, $reg_dest: ident, $instr_name: expr, $test_flags_en: expr) => {
             #[test]
             fn $func_name() {
                 let mut cpu = CPU {
@@ -1876,7 +1876,7 @@ mod tests {
                 let values = [0u8, 69, (!105u8 + 1)];
 
                 for i in 0..3 {
-                    memory.write_byte(i, Instruction::$instr_name.into());
+                    memory.write_byte(i, $instr_name.into());
                 }
 
                 for i in 0..3 {
@@ -1912,16 +1912,16 @@ mod tests {
         };
     }
 
-    test_transfer_reg_reg! {test_transfer_a_x, a, x, TAX, true}
-    test_transfer_reg_reg! {test_transfer_a_y, a, y, TAY, true}
-    test_transfer_reg_reg! {test_transfer_x_a, x, a, TXA, true}
-    test_transfer_reg_reg! {test_transfer_y_a, y, a, TYA, true}
-    test_transfer_reg_reg! {test_transfer_s_x, sp, x, TSX, true}
-    test_transfer_reg_reg! {test_transfer_x_s, x, sp, TXS, false}
+    test_transfer_reg_reg! {test_transfer_a_x, a, x, Instruction::TAX, true}
+    test_transfer_reg_reg! {test_transfer_a_y, a, y, Instruction::TAY, true}
+    test_transfer_reg_reg! {test_transfer_x_a, x, a, Instruction::TXA, true}
+    test_transfer_reg_reg! {test_transfer_y_a, y, a, Instruction::TYA, true}
+    test_transfer_reg_reg! {test_transfer_s_x, sp, x, Instruction::TSX, true}
+    test_transfer_reg_reg! {test_transfer_x_s, x, sp, Instruction::TXS, false}
 
     // Stack
     macro_rules! test_push_stack {
-        ($func_name: ident, $reg_name: ident, $instr_name: ident) => {
+        ($func_name: ident, $reg_name: ident, $instr_name: expr) => {
             #[test]
             fn $func_name() {
                 let mut cpu = CPU {
@@ -1936,7 +1936,7 @@ mod tests {
                 let values = [0u8, 69, (!105u8 + 1)];
 
                 for i in 0..3 {
-                    memory.write_byte(i, Instruction::$instr_name.into());
+                    memory.write_byte(i, $instr_name.into());
                 }
 
                 for i in 0..3 {
@@ -1960,7 +1960,7 @@ mod tests {
     }
 
     macro_rules! test_pull_stack {
-        ($func_name: ident, $reg_name: ident, $instr_name: ident, $instr_push_name: ident) => {
+        ($func_name: ident, $reg_name: ident, $instr_name: expr, $instr_push_name: expr) => {
             #[test]
             fn $func_name() {
                 let mut cpu = CPU {
@@ -1975,9 +1975,9 @@ mod tests {
                 let values = [0u8, 69, (!105u8 + 1)];
 
                 for i in 0..3 {
-                    memory.write_byte(i, Instruction::$instr_name.into());
+                    memory.write_byte(i, $instr_name.into());
                     cpu.$reg_name = values[i as usize];
-                    cpu.execute(&mut memory, Instruction::$instr_push_name.into());
+                    cpu.execute(&mut memory, $instr_push_name.into());
                 }
                 let cpu_copy = cpu.clone();
 
@@ -1995,7 +1995,7 @@ mod tests {
                     assert_eq!(cpu.sp, (cpu_copy.sp - i as u8 - 1) as u8);
                     assert_eq!(cpu.pc, pc + 1);
                     assert_eq!(cpu.cycles, cycles + 4);
-                    if (u8::from(Instruction::PLA) == u8::from(Instruction::$instr_name)) {
+                    if (u8::from(Instruction::PLA) == u8::from($instr_name)) {
                         assert_eq!(cpu.get_zero(), value == 0);
                         assert_eq!(cpu.get_negative(), (value as i8) < 0);
                     }
@@ -2004,10 +2004,10 @@ mod tests {
         };
     }
 
-    test_push_stack! {test_push_accumulator, a, PHA}
-    test_push_stack! {test_push_processor_status, status, PHP}
-    test_pull_stack! {test_pull_accumulator, a, PLA, PHA}
-    test_pull_stack! {test_pull_processor_status, status, PLP, PHP}
+    test_push_stack! {test_push_accumulator, a, Instruction::PHA}
+    test_push_stack! {test_push_processor_status, status, Instruction::PHP}
+    test_pull_stack! {test_pull_accumulator, a, Instruction::PLA, Instruction::PHA}
+    test_pull_stack! {test_pull_processor_status, status, Instruction::PLP, Instruction::PHP}
 
     #[test]
     fn test_reset() {
