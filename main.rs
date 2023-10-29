@@ -11,7 +11,7 @@ fn add_mod_65536(n1: u16, n2: u16) -> u16 {
     return sum as u16;
 }
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, Debug)]
 pub enum AddressingMode {
     Immediate,
     ZeroPage,
@@ -19,7 +19,7 @@ pub enum AddressingMode {
     Absolute,
     AbsoluteReg,
     IndirectX,
-    IndirectY
+    IndirectY,
 }
 
 pub trait MemoryLike<T> {
@@ -1583,56 +1583,72 @@ mod tests {
                 for i in 0..4 {
                     match $addr_mode {
                         AddressingMode::Immediate => {
-                            memory.write(2*i, u8::from(Instruction::$instr_name));
-                            memory.write(2*i + 1, values[i as usize]);
-                        },
+                            memory.write(2 * i, u8::from(Instruction::$instr_name));
+                            memory.write(2 * i + 1, values[i as usize]);
+                        }
                         AddressingMode::ZeroPage => {
-                            memory.write(2*i, u8::from(Instruction::$instr_name));
-                            memory.write(2*i + 1, addresses_zp[i as usize]);
+                            memory.write(2 * i, u8::from(Instruction::$instr_name));
+                            memory.write(2 * i + 1, addresses_zp[i as usize]);
                             memory.write(addresses_zp[i as usize] as u16, values[i as usize]);
-                        },
+                        }
                         AddressingMode::ZeroPageReg => {
-                            memory.write(2*i, u8::from(Instruction::$instr_name));
-                            memory.write(2*i + 1, addresses_zp[i as usize]);
-                            memory.write(addresses_zp_final_x[i as usize] as u16, values[i as usize]);
-                            memory.write(addresses_zp_final_y[i as usize] as u16, values[i as usize]);
-                        },
+                            memory.write(2 * i, u8::from(Instruction::$instr_name));
+                            memory.write(2 * i + 1, addresses_zp[i as usize]);
+                            memory
+                                .write(addresses_zp_final_x[i as usize] as u16, values[i as usize]);
+                            memory
+                                .write(addresses_zp_final_y[i as usize] as u16, values[i as usize]);
+                        }
                         AddressingMode::Absolute => {
-                            memory.write(3*i, u8::from(Instruction::$instr_name));
-                            memory.write(3*i + 1, addresses_absolute[i as usize]);
+                            memory.write(3 * i, u8::from(Instruction::$instr_name));
+                            memory.write(3 * i + 1, addresses_absolute[i as usize]);
                             memory.write(addresses_absolute[i as usize], values[i as usize]);
-                        },
+                        }
                         AddressingMode::AbsoluteReg => {
-                            memory.write(3*i, u8::from(Instruction::$instr_name));
-                            memory.write(3*i + 1, addresses_absolute[i as usize]);
-                            memory.write(addresses_absolute_final_y[i as usize], values[i as usize]);
+                            memory.write(3 * i, u8::from(Instruction::$instr_name));
+                            memory.write(3 * i + 1, addresses_absolute[i as usize]);
+                            memory
+                                .write(addresses_absolute_final_y[i as usize], values[i as usize]);
                             if $reg_type == Register::X {
-                                memory.write(addresses_absolute_final_x[i as usize], values[i as usize]);
+                                memory.write(
+                                    addresses_absolute_final_x[i as usize],
+                                    values[i as usize],
+                                );
                                 if addresses_absolute_final_x[i as usize] > 0xff {
                                     additional_cycles[i as usize] += 1;
-                                } 
+                                }
                             } else if $reg_type == Register::Y {
-                                memory.write(addresses_absolute_final_y[i as usize], values[i as usize]);
+                                memory.write(
+                                    addresses_absolute_final_y[i as usize],
+                                    values[i as usize],
+                                );
                                 if addresses_absolute_final_y[i as usize] > 0xff {
                                     additional_cycles[i as usize] += 1;
-                                } 
+                                }
                             }
-                        },
+                        }
                         AddressingMode::IndirectX => {
-                            memory.write(2*i, u8::from(Instruction::$instr_name));
-                            memory.write(2*i + 1, addresses_zp[i as usize]);
-                            memory.write(addresses_zp_final_x[i as usize] as u16, addresses_absolute[i as usize]);
+                            memory.write(2 * i, u8::from(Instruction::$instr_name));
+                            memory.write(2 * i + 1, addresses_zp[i as usize]);
+                            memory.write(
+                                addresses_zp_final_x[i as usize] as u16,
+                                addresses_absolute[i as usize],
+                            );
                             memory.write(addresses_absolute[i as usize], values[i as usize]);
-                        },
+                        }
                         AddressingMode::IndirectY => {
-                            memory.write(2*i, u8::from(Instruction::$instr_name));
-                            memory.write(2*i + 1, addresses_zp[i as usize]);
-                            memory.write(addresses_zp[i as usize] as u16, addresses_absolute[i as usize]);
-                            memory.write(addresses_absolute_final_y[i as usize], values[i as usize]);
+                            memory.write(2 * i, u8::from(Instruction::$instr_name));
+                            memory.write(2 * i + 1, addresses_zp[i as usize]);
+                            memory.write(
+                                addresses_zp[i as usize] as u16,
+                                addresses_absolute[i as usize],
+                            );
+                            memory
+                                .write(addresses_absolute_final_y[i as usize], values[i as usize]);
                             if addresses_absolute_final_y[i as usize] > 0xff {
                                 additional_cycles[i as usize] += 1;
                             }
-                        },
+                        }
                     }
                 }
 
@@ -1648,7 +1664,10 @@ mod tests {
 
                     assert_eq!(cpu.$reg_name, value);
                     assert_eq!(cpu.pc, pc + pc_increments[$addr_mode]);
-                    assert_eq!(cpu.cycles, cycles + cycles_increments[$addr_mode] + additional_cycles[i]);
+                    assert_eq!(
+                        cpu.cycles,
+                        cycles + cycles_increments[$addr_mode] + additional_cycles[i]
+                    );
                     assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
                     assert_eq!(cpu.get_zero(), value == 0);
                     assert_eq!(
@@ -1688,14 +1707,15 @@ mod tests {
     test_ld! {test_ldy_absolute, y, LDY_ABS, &AddressingMode::Absolute, Register::None}
     test_ld! {test_ldy_absolute_x, y, LDY_ABS_X, &AddressingMode::AbsoluteReg, Register::X}
 
-
-    macro_rules! test_st_zero_page {
-        ($func_name: ident, $reg_name: ident, $instr_name: ident) => {
+    macro_rules! test_st {
+        ($func_name: ident, $reg_name: ident, $instr_name: ident, $addr_mode: expr, $reg_type: expr) => {
             #[test]
             fn $func_name() {
+                use std::collections::HashMap;
                 let mut cpu = CPU {
                     ..Default::default()
                 };
+
                 let mut memory = Memory {
                     ..Default::default()
                 };
@@ -1703,21 +1723,100 @@ mod tests {
                 cpu.reset();
                 let cpu_copy = cpu.clone();
 
-                let values = [0u8, 69, (!105u8 + 1)];
-                let addresses = [0xff, 0x69, 0x10];
+                let mut pc_increments: HashMap<AddressingMode, u16> = HashMap::new();
+                pc_increments.insert(AddressingMode::ZeroPage, 2);
+                pc_increments.insert(AddressingMode::ZeroPageReg, 2);
+                pc_increments.insert(AddressingMode::Absolute, 3);
+                pc_increments.insert(AddressingMode::AbsoluteReg, 3);
+                pc_increments.insert(AddressingMode::IndirectX, 2);
+                pc_increments.insert(AddressingMode::IndirectY, 2);
 
-                for i in 0..3 {
-                    memory.write_byte(2 * i + 0, Instruction::$instr_name.into());
-                    memory.write_byte(2 * i + 1, addresses[i as usize]);
+                let mut cycles_increments: HashMap<AddressingMode, u64> = HashMap::new();
+                cycles_increments.insert(AddressingMode::ZeroPage, 3);
+                cycles_increments.insert(AddressingMode::ZeroPageReg, 4);
+                cycles_increments.insert(AddressingMode::Absolute, 4);
+                cycles_increments.insert(AddressingMode::AbsoluteReg, 5);
+                cycles_increments.insert(AddressingMode::IndirectX, 6);
+                cycles_increments.insert(AddressingMode::IndirectY, 6);
+
+                let values = [69u8, 0u8, 0xff, (!10u8 + 1)];
+                let addresses_zp = [0x13u8, 0x69, 0xFF, 0xAB];
+                let x_values = [0x10, 0x00u8, 0x16, 0x4A];
+                let y_values = [0x23, 0x00u8, 0x43, 0xBB];
+                let addresses_zp_final_x = [0x23u8, 0x69, 0x15, 0xF5];
+                let addresses_zp_final_y = [0x36u8, 0x69, 0x42, 0x66];
+                let addresses_absolute = [0x0013u16, 0xfff4, 0xABCD, 0xffff];
+                let addresses_absolute_final_x = [0x0023u16, 0xfff4, 0xABE3, 0x0049];
+                let addresses_absolute_final_y = [0x0036u16, 0xfff4, 0xAC10, 0x00BA];
+                let mut addresses_final: [u16; 4] = [0, 0, 0, 0];
+
+                for i in 0..4 {
+                    match $addr_mode {
+                        AddressingMode::ZeroPage => {
+                            memory.write(2 * i, u8::from(Instruction::$instr_name));
+                            memory.write(2 * i + 1, addresses_zp[i as usize]);
+                            addresses_final[i as usize] = addresses_zp[i as usize] as u16;
+                        }
+                        AddressingMode::ZeroPageReg => {
+                            memory.write(2 * i, u8::from(Instruction::$instr_name));
+                            memory.write(2 * i + 1, addresses_zp[i as usize]);
+                            if $reg_type == Register::X {
+                                addresses_final[i as usize] =
+                                    addresses_zp_final_x[i as usize] as u16;
+                            } else if $reg_type == Register::Y {
+                                addresses_final[i as usize] =
+                                    addresses_zp_final_y[i as usize] as u16;
+                            }
+                        }
+                        AddressingMode::Absolute => {
+                            memory.write(3 * i, u8::from(Instruction::$instr_name));
+                            memory.write(3 * i + 1, addresses_absolute[i as usize]);
+                            addresses_final[i as usize] = addresses_absolute[i as usize];
+                        }
+                        AddressingMode::AbsoluteReg => {
+                            memory.write(3 * i, u8::from(Instruction::$instr_name));
+                            memory.write(3 * i + 1, addresses_absolute[i as usize]);
+                            if $reg_type == Register::X {
+                                addresses_final[i as usize] =
+                                    addresses_absolute_final_x[i as usize];
+                            } else if $reg_type == Register::Y {
+                                addresses_final[i as usize] =
+                                    addresses_absolute_final_y[i as usize];
+                            }
+                        }
+                        AddressingMode::IndirectX => {
+                            memory.write(2 * i, u8::from(Instruction::$instr_name));
+                            memory.write(2 * i + 1, addresses_zp[i as usize]);
+                            memory.write(
+                                addresses_zp_final_x[i as usize] as u16,
+                                addresses_absolute[i as usize],
+                            );
+                            addresses_final[i as usize] = addresses_absolute[i as usize];
+                        }
+                        AddressingMode::IndirectY => {
+                            memory.write(2 * i, u8::from(Instruction::$instr_name));
+                            memory.write(2 * i + 1, addresses_zp[i as usize]);
+                            memory.write(
+                                addresses_zp[i as usize] as u16,
+                                addresses_absolute[i as usize],
+                            );
+                            addresses_final[i as usize] = addresses_absolute_final_y[i as usize];
+                        }
+                        _ => {
+                            panic!("Unsupported addressing mode {:?}!", $addr_mode);
+                        }
+                    }
                 }
 
-                for i in 0..3 {
+                for i in 0..4 {
                     let pc = cpu.pc;
                     let cycles = cpu.cycles;
-                    let address = addresses[i];
+                    let address = addresses_final[i];
                     let value = values[i];
                     let instruction = cpu.fetch_instruction(&memory);
 
+                    cpu.x = x_values[i];
+                    cpu.y = y_values[i];
                     cpu.$reg_name = value;
 
                     cpu.execute(&mut memory, instruction);
@@ -1725,8 +1824,8 @@ mod tests {
                     let actual_value: u8 = memory.read(address as u16);
                     assert_eq!(actual_value, value);
 
-                    assert_eq!(cpu.pc, pc + 2);
-                    assert_eq!(cpu.cycles, cycles + 3);
+                    assert_eq!(cpu.pc, pc + pc_increments[$addr_mode]);
+                    assert_eq!(cpu.cycles, cycles + cycles_increments[$addr_mode]);
                     assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
                     assert_eq!(cpu.get_zero(), cpu_copy.get_zero());
                     assert_eq!(
@@ -1742,168 +1841,22 @@ mod tests {
         };
     }
 
-    macro_rules! test_st_zero_page_reg {
-        ($func_name: ident, $reg_name: ident, $instr_name: ident, $addr_reg: ident) => {
-            #[test]
-            fn $func_name() {
-                let mut cpu = CPU {
-                    ..Default::default()
-                };
-                let mut memory = Memory {
-                    ..Default::default()
-                };
-
-                cpu.reset();
-                let cpu_copy = cpu.clone();
-
-                let values = [0u8, 69, (!105u8 + 1)];
-                let reg_addresses = [0x00, 0x34, 0xCD];
-                let addresses = [0xff, 0x35, 0x10];
-                let addresses_actual = [0xff, 0x69, 0xDD];
-
-                for i in 0..3 {
-                    memory.write_byte(2 * i + 0, Instruction::$instr_name.into());
-                    memory.write_byte(2 * i + 1, addresses[i as usize]);
-                }
-
-                for i in 0..3 {
-                    let pc = cpu.pc;
-                    let cycles = cpu.cycles;
-                    let value = values[i];
-                    let instruction = cpu.fetch_instruction(&memory);
-
-                    cpu.$addr_reg = reg_addresses[i];
-                    cpu.$reg_name = value;
-
-                    cpu.execute(&mut memory, instruction);
-
-                    let actual_value: u8 = memory.read(addresses_actual[i] as u16);
-                    assert_eq!(actual_value, value);
-
-                    assert_eq!(cpu.pc, pc + 2);
-                    assert_eq!(cpu.cycles, cycles + 4);
-                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
-                    assert_eq!(cpu.get_zero(), cpu_copy.get_zero());
-                    assert_eq!(
-                        cpu.get_interrupt_disable(),
-                        cpu_copy.get_interrupt_disable()
-                    );
-                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
-                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
-                    assert_eq!(cpu.get_negative(), cpu_copy.get_negative());
-                }
-            }
-        };
-    }
-
-    macro_rules! test_st_absolute {
-        ($func_name: ident, $reg_name: ident, $instr_name: ident) => {
-            #[test]
-            fn $func_name() {
-                let mut cpu = CPU {
-                    ..Default::default()
-                };
-                let mut memory = Memory {
-                    ..Default::default()
-                };
-
-                cpu.reset();
-                let cpu_copy = cpu.clone();
-
-                let values = [0u8, 69, (!105u8 + 1)];
-                let addresses = [0x1234, 0x4321, 0x6969];
-
-                for i in 0..3 {
-                    memory.write_byte(3 * i + 0, Instruction::$instr_name.into());
-                    memory.write_word(3 * i + 1, addresses[i as usize]);
-                }
-
-                for i in 0..3 {
-                    let pc = cpu.pc;
-                    let cycles = cpu.cycles;
-                    let address = addresses[i];
-                    let value = values[i];
-                    let instruction = cpu.fetch_instruction(&memory);
-
-                    cpu.$reg_name = value;
-
-                    cpu.execute(&mut memory, instruction);
-
-                    let actual_value: u8 = memory.read(address as u16);
-                    assert_eq!(actual_value, value);
-
-                    assert_eq!(cpu.pc, pc + 3);
-                    assert_eq!(cpu.cycles, cycles + 4);
-                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
-                    assert_eq!(cpu.get_zero(), cpu_copy.get_zero());
-                    assert_eq!(
-                        cpu.get_interrupt_disable(),
-                        cpu_copy.get_interrupt_disable()
-                    );
-                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
-                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
-                    assert_eq!(cpu.get_negative(), cpu_copy.get_negative());
-                }
-            }
-        };
-    }
-
-    macro_rules! test_st_absolute_reg {
-        ($func_name: ident, $reg_name: ident, $instr_name: ident, $addr_reg: ident) => {
-            #[test]
-            fn $func_name() {
-                let mut cpu = CPU {
-                    ..Default::default()
-                };
-                let mut memory = Memory {
-                    ..Default::default()
-                };
-
-                cpu.reset();
-                let cpu_copy = cpu.clone();
-
-                let values = [0u8, 69, (!105u8 + 1)];
-                let reg_addresses = [0x10, 0xAB, 0x00];
-                let addresses = [0x1234, 0x4321, 0x6969];
-                let addresses_actual = [0x1244, 0x43CC, 0x6969];
-
-                for i in 0..3 {
-                    memory.write_byte(3 * i + 0, Instruction::$instr_name.into());
-                    memory.write_word(3 * i + 1, addresses[i as usize]);
-                }
-
-                for i in 0..3 {
-                    let pc = cpu.pc;
-                    let cycles = cpu.cycles;
-                    let address = addresses_actual[i];
-                    let value = values[i];
-                    let instruction = cpu.fetch_instruction(&memory);
-
-                    cpu.$reg_name = value;
-                    cpu.$addr_reg = reg_addresses[i];
-
-                    cpu.execute(&mut memory, instruction);
-
-                    let actual_value: u8 = memory.read(address as u16);
-                    assert_eq!(actual_value, value);
-                    assert_eq!(cpu.pc, pc + 3);
-                    assert_eq!(cpu.cycles, cycles + 5);
-                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
-                    assert_eq!(cpu.get_zero(), cpu_copy.get_zero());
-                    assert_eq!(
-                        cpu.get_interrupt_disable(),
-                        cpu_copy.get_interrupt_disable()
-                    );
-                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
-                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
-                    assert_eq!(cpu.get_negative(), cpu_copy.get_negative());
-                }
-            }
-        };
-    }
+    // STA
+    test_st! {test_sta_zero_page, a, STA_ZP, &AddressingMode::ZeroPage, Register::None}
+    test_st! {test_sta_zero_page_x, a, STA_ZP_X, &AddressingMode::ZeroPageReg, Register::X}
+    test_st! {test_sta_absolute, a, STA_ABS, &AddressingMode::Absolute, Register::None}
+    test_st! {test_sta_absolute_x, a, STA_ABS_X, &AddressingMode::AbsoluteReg, Register::X}
+    test_st! {test_sta_absolute_y, a, STA_ABS_Y, &AddressingMode::AbsoluteReg, Register::Y}
+    test_st! {test_sta_indirect_x, a, STA_IN_X, &AddressingMode::IndirectX, Register::None}
+    test_st! {test_sta_indirect_y, a, STA_IN_Y, &AddressingMode::IndirectY, Register::None}
+    // STX
+    test_st! {test_stx_zero_page, x, STX_ZP, &AddressingMode::ZeroPage, Register::None}
+    test_st! {test_stx_zero_page_y, x, STX_ZP_Y, &AddressingMode::ZeroPageReg, Register::Y}
+    test_st! {test_stx_absolute, x, STX_ABS, &AddressingMode::Absolute, Register::None}
+    // STY
+    test_st! {test_sty_zero_page, y, STY_ZP, &AddressingMode::ZeroPage, Register::None}
+    test_st! {test_sty_zero_page_x, y, STY_ZP_X, &AddressingMode::ZeroPageReg, Register::X}
+    test_st! {test_sty_absolute, y, STY_ABS, &AddressingMode::Absolute, Register::None}
 
     #[test]
     fn test_reset() {
@@ -2039,137 +1992,6 @@ mod tests {
             Instruction::LDA_IM.into()
         );
     }
-
-    // STA
-    test_st_zero_page! {test_sta_zero_page, a, STA_ZP}
-
-    test_st_zero_page_reg! {test_sta_zero_page_x, a, STA_ZP_X, x}
-
-    test_st_absolute! {test_sta_absolute, a, STA_ABS}
-
-    test_st_absolute_reg! {test_sta_absolute_x, a, STA_ABS_X, x}
-
-    test_st_absolute_reg! {test_sta_absolute_y, a, STA_ABS_Y, y}
-
-    #[test]
-    fn test_sta_indirect_x() {
-        let mut cpu = CPU {
-            ..Default::default()
-        };
-        let mut memory = Memory {
-            ..Default::default()
-        };
-
-        cpu.reset();
-        let cpu_copy = cpu.clone();
-
-        let values = [0u8, 69, (!105u8 + 1)];
-        let x_addresses = [0x10, 0xAB, 0xF0];
-        let instr_addresses = [0x40, 0x10, 0xF0];
-        let zp_addresses = [0x50, 0xBB, 0xE0];
-        let addresses_actual = [0x1244, 0x43CC, 0x6969];
-
-        for i in 0..3 {
-            memory.write_byte(2 * i + 0, Instruction::STA_IN_X.into());
-            memory.write_byte(2 * i + 1, instr_addresses[i as usize]);
-            memory.write_word(zp_addresses[i as usize], addresses_actual[i as usize]);
-        }
-
-        for i in 0..3 {
-            let pc = cpu.pc;
-            let cycles = cpu.cycles;
-            let address = addresses_actual[i];
-            let value = values[i];
-            let instruction = cpu.fetch_instruction(&memory);
-
-            cpu.a = value;
-            cpu.x = x_addresses[i];
-
-            cpu.execute(&mut memory, instruction);
-
-            let actual_value: u8 = memory.read(address as u16);
-            assert_eq!(actual_value, value);
-            assert_eq!(cpu.pc, pc + 2);
-            assert_eq!(cpu.cycles, cycles + 6);
-            assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
-            assert_eq!(cpu.get_zero(), cpu_copy.get_zero());
-            assert_eq!(
-                cpu.get_interrupt_disable(),
-                cpu_copy.get_interrupt_disable()
-            );
-            assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-            assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
-            assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
-            assert_eq!(cpu.get_negative(), cpu_copy.get_negative());
-        }
-    }
-
-    #[test]
-    fn test_sta_indirect_y() {
-        let mut cpu = CPU {
-            ..Default::default()
-        };
-        let mut memory = Memory {
-            ..Default::default()
-        };
-
-        cpu.reset();
-        let cpu_copy = cpu.clone();
-
-        let values = [0u8, 69, (!105u8 + 1)];
-        let instr_addresses = [0x40, 0x10, 0xF0];
-        let y_addresses = [0x10, 0xAB, 0xF0];
-        let zp_addresses = [0x1234, 0x4321, 0x6879];
-        let addresses_actual = [0x1244, 0x43CC, 0x6969];
-
-        for i in 0..3 {
-            memory.write_byte(2 * i + 0, Instruction::STA_IN_Y.into());
-            memory.write_byte(2 * i + 1, instr_addresses[i as usize]);
-            memory.write_word(instr_addresses[i as usize] as u16, zp_addresses[i as usize]);
-        }
-
-        for i in 0..3 {
-            let pc = cpu.pc;
-            let cycles = cpu.cycles;
-            let address = addresses_actual[i];
-            let value = values[i];
-            let instruction = cpu.fetch_instruction(&memory);
-
-            cpu.a = value;
-            cpu.y = y_addresses[i];
-
-            cpu.execute(&mut memory, instruction);
-
-            let actual_value: u8 = memory.read(address);
-            assert_eq!(actual_value, value);
-            assert_eq!(cpu.pc, pc + 2);
-            assert_eq!(cpu.cycles, cycles + 6);
-            assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
-            assert_eq!(cpu.get_zero(), cpu_copy.get_zero());
-            assert_eq!(
-                cpu.get_interrupt_disable(),
-                cpu_copy.get_interrupt_disable()
-            );
-            assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-            assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
-            assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
-            assert_eq!(cpu.get_negative(), cpu_copy.get_negative());
-        }
-    }
-
-    // STX
-    test_st_zero_page! {test_stx_zero_page, x, STX_ZP}
-
-    test_st_zero_page_reg! {test_stx_zero_page_y, x, STX_ZP_Y, y}
-
-    test_st_absolute! {test_stx_absolute, x, STX_ABS}
-
-    // STY
-    test_st_zero_page! {test_sty_zero_page, y, STY_ZP}
-
-    test_st_zero_page_reg! {test_sty_zero_page_x, y, STY_ZP_X, x}
-
-    test_st_absolute! {test_sty_absolute, y, STY_ABS}
 
     // Transfer
     macro_rules! test_transfer_reg_reg {
