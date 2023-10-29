@@ -1858,6 +1858,157 @@ mod tests {
     test_st! {test_sty_zero_page_x, y, STY_ZP_X, &AddressingMode::ZeroPageReg, Register::X}
     test_st! {test_sty_absolute, y, STY_ABS, &AddressingMode::Absolute, Register::None}
 
+    // Transfer
+    macro_rules! test_transfer_reg_reg {
+        ($func_name: ident, $reg_src: ident, $reg_dest: ident, $instr_name: ident, $test_flags_en: expr) => {
+            #[test]
+            fn $func_name() {
+                let mut cpu = CPU {
+                    ..Default::default()
+                };
+                let mut memory = Memory {
+                    ..Default::default()
+                };
+
+                cpu.reset();
+                let cpu_copy = cpu.clone();
+
+                let values = [0u8, 69, (!105u8 + 1)];
+
+                for i in 0..3 {
+                    memory.write_byte(i, Instruction::$instr_name.into());
+                }
+
+                for i in 0..3 {
+                    let pc = cpu.pc;
+                    let cycles = cpu.cycles;
+                    let value = values[i];
+                    let instruction = cpu.fetch_instruction(&memory);
+
+                    cpu.$reg_src = value;
+
+                    cpu.execute(&mut memory, instruction);
+
+                    assert_eq!(cpu.$reg_dest, value);
+                    assert_eq!(cpu.pc, pc + 1);
+                    assert_eq!(cpu.cycles, cycles + 2);
+                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
+                    assert_eq!(
+                        cpu.get_interrupt_disable(),
+                        cpu_copy.get_interrupt_disable()
+                    );
+                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
+                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
+                    if $test_flags_en {
+                        assert_eq!(cpu.get_zero(), value == 0);
+                        assert_eq!(cpu.get_negative(), (value as i8) < 0);
+                    } else {
+                        assert_eq!(cpu.get_zero(), cpu_copy.get_zero());
+                        assert_eq!(cpu.get_negative(), cpu_copy.get_negative());
+                    }
+                }
+            }
+        };
+    }
+
+    test_transfer_reg_reg! {test_transfer_a_x, a, x, TAX, true}
+    test_transfer_reg_reg! {test_transfer_a_y, a, y, TAY, true}
+    test_transfer_reg_reg! {test_transfer_x_a, x, a, TXA, true}
+    test_transfer_reg_reg! {test_transfer_y_a, y, a, TYA, true}
+    test_transfer_reg_reg! {test_transfer_s_x, sp, x, TSX, true}
+    test_transfer_reg_reg! {test_transfer_x_s, x, sp, TXS, false}
+
+    // Stack
+    macro_rules! test_push_stack {
+        ($func_name: ident, $reg_name: ident, $instr_name: ident) => {
+            #[test]
+            fn $func_name() {
+                let mut cpu = CPU {
+                    ..Default::default()
+                };
+                let mut memory = Memory {
+                    ..Default::default()
+                };
+
+                cpu.reset();
+
+                let values = [0u8, 69, (!105u8 + 1)];
+
+                for i in 0..3 {
+                    memory.write_byte(i, Instruction::$instr_name.into());
+                }
+
+                for i in 0..3 {
+                    let pc = cpu.pc;
+                    let cycles = cpu.cycles;
+                    let value = values[i];
+                    let instruction = cpu.fetch_instruction(&memory);
+
+                    cpu.$reg_name = value;
+
+                    cpu.execute(&mut memory, instruction);
+
+                    let actual_value: u8 = memory.read(0x0100 + (cpu.sp - 1) as u16);
+                    assert_eq!(actual_value, value);
+                    assert_eq!(cpu.sp, (i + 1) as u8);
+                    assert_eq!(cpu.pc, pc + 1);
+                    assert_eq!(cpu.cycles, cycles + 3);
+                }
+            }
+        };
+    }
+
+    macro_rules! test_pull_stack {
+        ($func_name: ident, $reg_name: ident, $instr_name: ident, $instr_push_name: ident) => {
+            #[test]
+            fn $func_name() {
+                let mut cpu = CPU {
+                    ..Default::default()
+                };
+                let mut memory = Memory {
+                    ..Default::default()
+                };
+
+                cpu.reset();
+
+                let values = [0u8, 69, (!105u8 + 1)];
+
+                for i in 0..3 {
+                    memory.write_byte(i, Instruction::$instr_name.into());
+                    cpu.$reg_name = values[i as usize];
+                    cpu.execute(&mut memory, Instruction::$instr_push_name.into());
+                }
+                let cpu_copy = cpu.clone();
+
+                for i in 0..3 {
+                    let pc = cpu.pc;
+                    let cycles = cpu.cycles;
+                    let value = values[values.len() - i - 1];
+                    let instruction = cpu.fetch_instruction(&memory);
+
+                    cpu.$reg_name = value;
+
+                    cpu.execute(&mut memory, instruction);
+
+                    assert_eq!(cpu.$reg_name, value);
+                    assert_eq!(cpu.sp, (cpu_copy.sp - i as u8 - 1) as u8);
+                    assert_eq!(cpu.pc, pc + 1);
+                    assert_eq!(cpu.cycles, cycles + 4);
+                    if (u8::from(Instruction::PLA) == u8::from(Instruction::$instr_name)) {
+                        assert_eq!(cpu.get_zero(), value == 0);
+                        assert_eq!(cpu.get_negative(), (value as i8) < 0);
+                    }
+                }
+            }
+        };
+    }
+
+    test_push_stack! {test_push_accumulator, a, PHA}
+    test_push_stack! {test_push_processor_status, status, PHP}
+    test_pull_stack! {test_pull_accumulator, a, PLA, PHA}
+    test_pull_stack! {test_pull_processor_status, status, PLP, PHP}
+
     #[test]
     fn test_reset() {
         let mut cpu = CPU {
@@ -1993,168 +2144,7 @@ mod tests {
         );
     }
 
-    // Transfer
-    macro_rules! test_transfer_reg_reg {
-        ($func_name: ident, $reg_src: ident, $reg_dest: ident, $instr_name: ident, $test_flags_en: expr) => {
-            #[test]
-            fn $func_name() {
-                let mut cpu = CPU {
-                    ..Default::default()
-                };
-                let mut memory = Memory {
-                    ..Default::default()
-                };
-
-                cpu.reset();
-                let cpu_copy = cpu.clone();
-
-                let values = [0u8, 69, (!105u8 + 1)];
-
-                for i in 0..3 {
-                    memory.write_byte(i, Instruction::$instr_name.into());
-                }
-
-                for i in 0..3 {
-                    let pc = cpu.pc;
-                    let cycles = cpu.cycles;
-                    let value = values[i];
-                    let instruction = cpu.fetch_instruction(&memory);
-
-                    cpu.$reg_src = value;
-
-                    cpu.execute(&mut memory, instruction);
-
-                    assert_eq!(cpu.$reg_dest, value);
-                    assert_eq!(cpu.pc, pc + 1);
-                    assert_eq!(cpu.cycles, cycles + 2);
-                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
-                    assert_eq!(
-                        cpu.get_interrupt_disable(),
-                        cpu_copy.get_interrupt_disable()
-                    );
-                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
-                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
-                    if $test_flags_en {
-                        assert_eq!(cpu.get_zero(), value == 0);
-                        assert_eq!(cpu.get_negative(), (value as i8) < 0);
-                    } else {
-                        assert_eq!(cpu.get_zero(), cpu_copy.get_zero());
-                        assert_eq!(cpu.get_negative(), cpu_copy.get_negative());
-                    }
-                }
-            }
-        };
-    }
-
-    test_transfer_reg_reg! {test_transfer_a_x, a, x, TAX, true}
-
-    test_transfer_reg_reg! {test_transfer_a_y, a, y, TAY, true}
-
-    test_transfer_reg_reg! {test_transfer_x_a, x, a, TXA, true}
-
-    test_transfer_reg_reg! {test_transfer_y_a, y, a, TYA, true}
-
-    test_transfer_reg_reg! {test_transfer_s_x, sp, x, TSX, true}
-
-    test_transfer_reg_reg! {test_transfer_x_s, x, sp, TXS, false}
-
-    // Stack
-    macro_rules! test_push_stack {
-        ($func_name: ident, $reg_name: ident, $instr_name: ident) => {
-            #[test]
-            fn $func_name() {
-                let mut cpu = CPU {
-                    ..Default::default()
-                };
-                let mut memory = Memory {
-                    ..Default::default()
-                };
-
-                cpu.reset();
-
-                let values = [0u8, 69, (!105u8 + 1)];
-
-                for i in 0..3 {
-                    memory.write_byte(i, Instruction::$instr_name.into());
-                }
-
-                for i in 0..3 {
-                    let pc = cpu.pc;
-                    let cycles = cpu.cycles;
-                    let value = values[i];
-                    let instruction = cpu.fetch_instruction(&memory);
-
-                    cpu.$reg_name = value;
-
-                    cpu.execute(&mut memory, instruction);
-
-                    let actual_value: u8 = memory.read(0x0100 + (cpu.sp - 1) as u16);
-                    assert_eq!(actual_value, value);
-                    assert_eq!(cpu.sp, (i + 1) as u8);
-                    assert_eq!(cpu.pc, pc + 1);
-                    assert_eq!(cpu.cycles, cycles + 3);
-                }
-            }
-        };
-    }
-
-    macro_rules! test_pull_stack {
-        ($func_name: ident, $reg_name: ident, $instr_name: ident, $instr_push_name: ident) => {
-            #[test]
-            fn $func_name() {
-                let mut cpu = CPU {
-                    ..Default::default()
-                };
-                let mut memory = Memory {
-                    ..Default::default()
-                };
-
-                cpu.reset();
-
-                let values = [0u8, 69, (!105u8 + 1)];
-
-                for i in 0..3 {
-                    memory.write_byte(i, Instruction::$instr_name.into());
-                    cpu.$reg_name = values[i as usize];
-                    cpu.execute(&mut memory, Instruction::$instr_push_name.into());
-                }
-                let cpu_copy = cpu.clone();
-
-                for i in 0..3 {
-                    let pc = cpu.pc;
-                    let cycles = cpu.cycles;
-                    let value = values[values.len() - i - 1];
-                    let instruction = cpu.fetch_instruction(&memory);
-
-                    cpu.$reg_name = value;
-
-                    cpu.execute(&mut memory, instruction);
-
-                    assert_eq!(cpu.$reg_name, value);
-                    assert_eq!(cpu.sp, (cpu_copy.sp - i as u8 - 1) as u8);
-                    assert_eq!(cpu.pc, pc + 1);
-                    assert_eq!(cpu.cycles, cycles + 4);
-                    if (u8::from(Instruction::PLA) == u8::from($instr_name)) {
-                        assert_eq!(cpu.get_zero(), value == 0);
-                        assert_eq!(cpu.get_negative(), (value as i8) < 0);
-                    }
-                }
-            }
-        };
-    }
-
-    test_push_stack! {test_push_accumulator, a, PHA}
-
-    test_push_stack! {test_push_processor_status, status, PHP}
-    use Instruction::PLA;
-    use Instruction::PLP;
-    test_pull_stack! {test_pull_accumulator, a, PLA, PHA}
-
-    test_pull_stack! {test_pull_processor_status, status, PLP, PHP}
-
     // Logical
-
     macro_rules! test_logic_immediate {
         ($func_name: ident, $op_func: expr, $instr_name: ident) => {
             #[test]
