@@ -29,8 +29,10 @@ pub trait MemoryLike<T> {
     fn read_zero_page_x(&self, pc: &mut Word, x: Byte) -> T;
     fn read_absolute(&self, pc: &mut Word) -> T;
     fn read_absolute_x(&self, pc: &mut Word, x: Byte) -> T;
+    fn read_absolute_x_check_crossing(&self, pc: &mut Word, x: Byte, page_crossed: &mut bool) -> T;
     fn read_indirect_x(&self, pc: &mut Word, x: Byte) -> T;
     fn read_indirect_y(&self, pc: &mut Word, y: Byte) -> T;
+    fn read_indirect_y_check_crossing(&self, pc: &mut Word, y: Byte, page_crossed: &mut bool) -> T;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -81,6 +83,17 @@ impl MemoryLike<u8> for Memory {
         return value;
     }
 
+    fn read_absolute_x_check_crossing(&self, pc: &mut Word, x: Byte, page_crossed: &mut bool) -> u8 {
+        let addr = self.read(*pc);
+        let addr_final = add_mod_65536(addr, x as u16);
+        let value = self.read(addr_final);
+        *pc += 2;
+
+        *page_crossed = addr_final > 0xff;
+
+        return value;
+    }
+
     fn read_indirect_x(&self, pc: &mut Word, x: Byte) -> u8 {
         let addr = self.read(*pc);
         let addr_zp = add_mod_256(addr, x);
@@ -97,6 +110,18 @@ impl MemoryLike<u8> for Memory {
         let addr_final = add_mod_65536(addr_on_zp, y as u16);
         let value = self.read(addr_final);
         *pc += 1;
+
+        return value;
+    }
+
+    fn read_indirect_y_check_crossing(&self, pc: &mut Word, y: Byte, page_crossed: &mut bool) -> u8 {
+        let addr: u8 = self.read(*pc);
+        let addr_on_zp = self.read(addr as u16);
+        let addr_final = add_mod_65536(addr_on_zp, y as u16);
+        let value = self.read(addr_final);
+        *pc += 1;
+
+        *page_crossed = addr_final > 0xff;
 
         return value;
     }
@@ -146,11 +171,19 @@ impl MemoryLike<u16> for Memory {
         return value;
     }
 
+    fn read_absolute_x_check_crossing(&self, pc: &mut Word, x: Byte, page_crossed: &mut bool) -> u16 {
+        todo!();
+    }
+
     fn read_indirect_x(&self, _pc: &mut Word, _x: Byte) -> u16 {
         todo!();
     }
 
     fn read_indirect_y(&self, _pc: &mut Word, _y: Byte) -> u16 {
+        todo!();
+    }
+
+    fn read_indirect_y_check_crossing(&self, pc: &mut Word, y: Byte, page_crossed: &mut bool) -> u16 {
         todo!();
     }
 }
