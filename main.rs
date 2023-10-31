@@ -171,7 +171,7 @@ impl MemoryLike<u16> for Memory {
         return value;
     }
 
-    fn read_absolute_x_check_crossing(&self, pc: &mut Word, x: Byte, page_crossed: &mut bool) -> u16 {
+    fn read_absolute_x_check_crossing(&self, _pc: &mut Word, _x: Byte, _page_crossed: &mut bool) -> u16 {
         todo!();
     }
 
@@ -183,7 +183,7 @@ impl MemoryLike<u16> for Memory {
         todo!();
     }
 
-    fn read_indirect_y_check_crossing(&self, pc: &mut Word, y: Byte, page_crossed: &mut bool) -> u16 {
+    fn read_indirect_y_check_crossing(&self, _pc: &mut Word, _y: Byte, _page_crossed: &mut bool) -> u16 {
         todo!();
     }
 }
@@ -602,6 +602,12 @@ impl CPU {
         self.status = (self.status & !(1 << 6)) | value_bin;
     }
 
+    // Sets flags based on number passed
+    fn test_number(&mut self, num: u8) {
+        self.set_zero(num == 0);
+        self.set_negative((num & 0b1000_0000) != 0);
+    }
+
     pub fn execute(&mut self, memory: &mut Memory, i: Instruction) {
         match i {
             // LDA
@@ -698,146 +704,67 @@ impl CPU {
     }
 }
 
-macro_rules! ld_immediate {
-    ($func_name: ident, $reg_name: ident) => {
+macro_rules! ld {
+    ($func_name: ident, $reg_name: ident, $addr_reg: ident, $addr_mode: expr) => {
         fn $func_name(&mut self, memory: &Memory) {
-            let value: u8 = memory.read(self.pc);
+            use std::collections::HashMap;
+            let mut cycles: HashMap<AddressingMode, u64> = HashMap::new();
+            cycles.insert(AddressingMode::Immediate, 2);
+            cycles.insert(AddressingMode::ZeroPage, 3);
+            cycles.insert(AddressingMode::ZeroPageReg, 4);
+            cycles.insert(AddressingMode::Absolute, 4);
+            cycles.insert(AddressingMode::AbsoluteReg, 4);
+            cycles.insert(AddressingMode::IndirectX, 6);
+            cycles.insert(AddressingMode::IndirectY, 5);
+
+            let mut page_crossed: bool = false;
+
+            let value = match $addr_mode {
+                AddressingMode::Immediate => memory.read_immediate(&mut self.pc),
+                AddressingMode::ZeroPage => memory.read_zero_page(&mut self.pc),
+                AddressingMode::ZeroPageReg => {
+                    memory.read_zero_page_x(&mut self.pc, self.$addr_reg)
+                }
+                AddressingMode::Absolute => memory.read_absolute(&mut self.pc),
+                AddressingMode::AbsoluteReg => memory.read_absolute_x_check_crossing(&mut self.pc, self.$addr_reg, &mut page_crossed),
+                AddressingMode::IndirectX => memory.read_indirect_x(&mut self.pc, self.x),
+                AddressingMode::IndirectY => memory.read_indirect_y_check_crossing(&mut self.pc, self.y, &mut page_crossed),
+            };
+
             self.$reg_name = value;
             self.test_number(value);
 
-            self.pc += 1;
-            self.cycles += 2;
-        }
-    };
-}
-
-macro_rules! ld_zero_page {
-    ($func_name: ident, $reg_name: ident) => {
-        fn $func_name(&mut self, memory: &Memory) {
-            let address: u8 = memory.read(self.pc);
-            let value: u8 = memory.read(address as u16);
-            self.$reg_name = value;
-            self.test_number(value);
-
-            self.pc += 1;
-            self.cycles += 3
-        }
-    };
-}
-
-macro_rules! ld_zero_page_reg {
-    ($func_name: ident, $reg_name: ident, $addr_reg: ident) => {
-        fn $func_name(&mut self, memory: &Memory) {
-            let address: u8 = memory.read(self.pc);
-            let address_final = add_mod_256(address, self.$addr_reg);
-            let value: u8 = memory.read(address_final as u16);
-            self.$reg_name = value;
-            self.test_number(value);
-
-            self.pc += 1;
-            self.cycles += 4
-        }
-    };
-}
-
-macro_rules! ld_absolute {
-    ($func_name: ident, $reg_name: ident) => {
-        fn $func_name(&mut self, memory: &Memory) {
-            let address: u16 = memory.read(self.pc);
-            let value: u8 = memory.read(address);
-            self.$reg_name = value;
-            self.test_number(value);
-
-            self.pc += 2;
-            self.cycles += 4
-        }
-    };
-}
-
-macro_rules! ld_absolute_reg {
-    ($func_name: ident, $reg_name: ident, $addr_reg: ident) => {
-        fn $func_name(&mut self, memory: &Memory) {
-            let instruction_address: u16 = memory.read(self.pc);
-            let reg_address = self.$addr_reg;
-            let address = add_mod_65536(instruction_address, reg_address as u16);
-            let value: u8 = memory.read(address);
-            self.$reg_name = value;
-            self.test_number(value);
-
-            self.pc += 2;
-            self.cycles += if address < 256 { 4 } else { 5 };
+            self.cycles += cycles[$addr_mode];
+            self.cycles += if page_crossed { 1 } else { 0 }
         }
     };
 }
 
 impl CPU {
-    ld_immediate! {lda_immediate, a}
-
-    ld_zero_page! {lda_zero_page, a}
-
-    ld_zero_page_reg! {lda_zero_page_x, a, x}
-
-    ld_absolute! {lda_absolute, a}
-
-    ld_absolute_reg! {lda_absolute_x, a, x}
-
-    ld_absolute_reg! {lda_absolute_y, a, y}
-
-    fn lda_indirect_x(&mut self, memory: &Memory) {
-        let instruction_address: u8 = memory.read(self.pc);
-        let x_address = self.x;
-        let address = add_mod_256(instruction_address, x_address);
-        let actual_address: u16 = memory.read(address as u16);
-        let value: u8 = memory.read(actual_address);
-        self.a = value;
-        self.test_number(value);
-
-        self.pc += 1;
-        self.cycles += 6;
-    }
-
-    fn lda_indirect_y(&mut self, memory: &Memory) {
-        let instruction_address: u8 = memory.read(self.pc);
-        let y_address = self.y;
-        let address_zp: u16 = memory.read(instruction_address as u16);
-        let actual_address = add_mod_65536(address_zp, y_address as u16);
-        let value: u8 = memory.read(actual_address);
-        self.a = value;
-        self.test_number(value);
-
-        self.pc += 1;
-        self.cycles += if actual_address < 256 { 5 } else { 6 };
-    }
-
-    // Sets flags based on number passed
-    fn test_number(&mut self, num: u8) {
-        self.set_zero(num == 0);
-        self.set_negative((num & 0b1000_0000) != 0);
-    }
+    ld! {lda_immediate, a, x, &AddressingMode::Immediate}
+    ld! {lda_zero_page, a, x, &AddressingMode::ZeroPage}
+    ld! {lda_zero_page_x, a, x, &AddressingMode::ZeroPageReg}
+    ld! {lda_absolute, a, x, &AddressingMode::Absolute}
+    ld! {lda_absolute_x, a, x, &AddressingMode::AbsoluteReg}
+    ld! {lda_absolute_y, a, y, &AddressingMode::AbsoluteReg}
+    ld! {lda_indirect_x, a, x, &AddressingMode::IndirectX}
+    ld! {lda_indirect_y, a, y, &AddressingMode::IndirectY}
 }
 
 impl CPU {
-    ld_immediate! {ldx_immediate, x}
-
-    ld_zero_page! {ldx_zero_page, x}
-
-    ld_zero_page_reg! {ldx_zero_page_y, x, y}
-
-    ld_absolute! {ldx_absolute, x}
-
-    ld_absolute_reg! {ldx_absolute_y, x, y}
+    ld! {ldx_immediate, x, y, &AddressingMode::Immediate}
+    ld! {ldx_zero_page, x, y, &AddressingMode::ZeroPage}
+    ld! {ldx_zero_page_y, x, y, &AddressingMode::ZeroPageReg}
+    ld! {ldx_absolute, x, y, &AddressingMode::Absolute}
+    ld! {ldx_absolute_y, x, y, &AddressingMode::AbsoluteReg}
 }
 
 impl CPU {
-    ld_immediate! {ldy_immediate, y}
-
-    ld_zero_page! {ldy_zero_page, y}
-
-    ld_zero_page_reg! {ldy_zero_page_x, y, x}
-
-    ld_absolute! {ldy_absolute, y}
-
-    ld_absolute_reg! {ldy_absolute_x, y, x}
+    ld! {ldy_immediate, y, x, &AddressingMode::Immediate}
+    ld! {ldy_zero_page, y, x, &AddressingMode::ZeroPage}
+    ld! {ldy_zero_page_x, y, x, &AddressingMode::ZeroPageReg}
+    ld! {ldy_absolute, y, x, &AddressingMode::Absolute}
+    ld! {ldy_absolute_x, y, x, &AddressingMode::AbsoluteReg}
 }
 
 macro_rules! st_zero_page {
