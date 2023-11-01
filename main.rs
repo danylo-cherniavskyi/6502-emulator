@@ -205,7 +205,7 @@ impl Memory {
         *pc += 1;
     }
 
-    pub fn write_zero_page_reg(&mut self, pc: &mut Word, x: u8, value: u8) {
+    pub fn write_zero_page_x(&mut self, pc: &mut Word, x: u8, value: u8) {
         let addr: u8 = self.read(*pc);
         let addr_final = add_mod_256(addr, x);
         self.write(addr_final as u16, value);
@@ -220,7 +220,7 @@ impl Memory {
         *pc += 2;
     }
 
-    pub fn write_absolute_reg(&mut self, pc: &mut Word, x: u8, value: u8) {
+    pub fn write_absolute_x(&mut self, pc: &mut Word, x: u8, value: u8) {
         let addr: u16 = self.read(*pc);
         let addr_final = add_mod_65536(addr, x as u16);
         self.write(addr_final, value);
@@ -815,104 +815,53 @@ impl CPU {
     ld! {ldy_absolute_x, y, x, &AddressingMode::AbsoluteReg}
 }
 
-macro_rules! st_zero_page {
-    ($func_name: ident, $reg_name: ident) => {
+macro_rules! st {
+    ($func_name: ident, $reg_name: ident, $addr_reg: ident, $addr_mode: expr) => {
         fn $func_name(&mut self, memory: &mut Memory) {
-            let address: u8 = memory.read(self.pc);
-            memory.write_byte(address as u16, self.$reg_name);
+            use std::collections::HashMap;
+            let mut cycles: HashMap<AddressingMode, u64> = HashMap::new();
+            cycles.insert(AddressingMode::ZeroPage, 3);
+            cycles.insert(AddressingMode::ZeroPageReg, 4);
+            cycles.insert(AddressingMode::Absolute, 4);
+            cycles.insert(AddressingMode::AbsoluteReg, 5);
+            cycles.insert(AddressingMode::IndirectX, 6);
+            cycles.insert(AddressingMode::IndirectY, 6);
 
-            self.pc += 1;
-            self.cycles += 3
-        }
-    };
-}
+            match $addr_mode {
+                AddressingMode::ZeroPage => memory.write_zero_page(&mut self.pc, self.$reg_name),
+                AddressingMode::ZeroPageReg => memory.write_zero_page_x(&mut self.pc, self.$addr_reg, self.$reg_name),
+                AddressingMode::Absolute => memory.write_absolute(&mut self.pc, self.$reg_name),
+                AddressingMode::AbsoluteReg => memory.write_absolute_x(&mut self.pc, self.$addr_reg, self.$reg_name),
+                AddressingMode::IndirectX => memory.write_indirect_x(&mut self.pc, self.x, self.$reg_name),
+                AddressingMode::IndirectY => memory.write_indirect_y(&mut self.pc, self.y, self.$reg_name),
+                _ => panic!("Unsupported addressing mode {:?}", $addr_mode)
+            };
 
-macro_rules! st_zero_page_reg {
-    ($func_name: ident, $reg_name: ident, $addr_reg: ident) => {
-        fn $func_name(&mut self, memory: &mut Memory) {
-            let address: u8 = memory.read(self.pc);
-            let address_actual = add_mod_256(address, self.$addr_reg);
-            memory.write_byte(address_actual as u16, self.$reg_name);
-
-            self.pc += 1;
-            self.cycles += 4;
-        }
-    };
-}
-
-macro_rules! st_absolute {
-    ($func_name: ident, $reg_name: ident) => {
-        fn $func_name(&mut self, memory: &mut Memory) {
-            let address: u16 = memory.read(self.pc);
-            memory.write_byte(address, self.$reg_name);
-
-            self.pc += 2;
-            self.cycles += 4
-        }
-    };
-}
-
-macro_rules! st_absolute_reg {
-    ($func_name: ident, $reg_name: ident, $addr_reg: ident) => {
-        fn $func_name(&mut self, memory: &mut Memory) {
-            let address: u16 = memory.read(self.pc);
-            let address_actual = add_mod_65536(address, self.$addr_reg as u16);
-            memory.write_byte(address_actual, self.$reg_name);
-
-            self.pc += 2;
-            self.cycles += 5;
+            self.cycles += cycles[$addr_mode];
         }
     };
 }
 
 impl CPU {
-    st_zero_page! {sta_zero_page, a}
-
-    st_zero_page_reg! {sta_zero_page_x, a, x}
-
-    st_absolute! {sta_absolute, a}
-
-    st_absolute_reg! {sta_absolute_x, a, x}
-
-    st_absolute_reg! {sta_absolute_y, a, y}
-
-    fn sta_indirect_x(&mut self, memory: &mut Memory) {
-        let address: u8 = memory.read(self.pc);
-        let x_address = self.x;
-        let sum_address = add_mod_256(address, x_address);
-        let address_actual: u16 = memory.read(sum_address as u16);
-        memory.write_byte(address_actual, self.a);
-
-        self.pc += 1;
-        self.cycles += 6;
-    }
-
-    fn sta_indirect_y(&mut self, memory: &mut Memory) {
-        let address: u8 = memory.read(self.pc);
-        let y_address = self.y;
-        let zp_address: u16 = memory.read(address as u16);
-        let address_actual = add_mod_65536(zp_address, y_address as u16);
-        memory.write_byte(address_actual, self.a);
-
-        self.pc += 1;
-        self.cycles += 6;
-    }
+    st! {sta_zero_page, a, x, &AddressingMode::ZeroPage}
+    st! {sta_zero_page_x, a, x, &AddressingMode::ZeroPageReg}
+    st! {sta_absolute, a, x, &AddressingMode::Absolute}
+    st! {sta_absolute_x, a, x, &AddressingMode::AbsoluteReg}
+    st! {sta_absolute_y, a, y, &AddressingMode::AbsoluteReg}
+    st! {sta_indirect_x, a, x, &AddressingMode::IndirectX}
+    st! {sta_indirect_y, a, y ,&AddressingMode::IndirectY}
 }
 
 impl CPU {
-    st_zero_page! {stx_zero_page, x}
-
-    st_zero_page_reg! {stx_zero_page_y, x, y}
-
-    st_absolute! {stx_absolute, x}
+    st! {stx_zero_page, x, y, &AddressingMode::ZeroPage}
+    st! {stx_zero_page_y, x, y, &AddressingMode::ZeroPageReg}
+    st! {stx_absolute, x, y, &AddressingMode::Absolute}
 }
 
 impl CPU {
-    st_zero_page! {sty_zero_page, y}
-
-    st_zero_page_reg! {sty_zero_page_x, y, x}
-
-    st_absolute! {sty_absolute, y}
+    st! {sty_zero_page, y, x, &AddressingMode::ZeroPage}
+    st! {sty_zero_page_x, y, x, &AddressingMode::ZeroPageReg}
+    st! {sty_absolute, y, x, &AddressingMode::Absolute}
 }
 
 macro_rules! transfer_reg_reg {
@@ -931,15 +880,10 @@ macro_rules! transfer_reg_reg {
 
 impl CPU {
     transfer_reg_reg! {transfer_a_x, a, x, true}
-
     transfer_reg_reg! {transfer_a_y, a, y, true}
-
     transfer_reg_reg! {transfer_x_a, x, a, true}
-
     transfer_reg_reg! {transfer_y_a, y, a, true}
-
     transfer_reg_reg! {transfer_s_x, sp, x, true}
-
     transfer_reg_reg! {transfer_x_s, x, sp, false}
 }
 
@@ -1304,7 +1248,7 @@ mod tests {
         }
 
         for i in 0..4 {
-            memory.write_zero_page_reg(&mut pcs[i], x_addresses[i], values[i]);
+            memory.write_zero_page_x(&mut pcs[i], x_addresses[i], values[i]);
             let value: u8 = memory.read(addresses_final[i] as u16);
             assert_eq!(value, values[i]);
             assert_eq!(pcs[i], pcs_init[i] + 1);
@@ -1353,7 +1297,7 @@ mod tests {
         }
 
         for i in 0..4 {
-            memory.write_absolute_reg(&mut pcs[i], x_addresses[i], values[i]);
+            memory.write_absolute_x(&mut pcs[i], x_addresses[i], values[i]);
             let value: u8 = memory.read(addresses_final[i]);
 
             assert_eq!(value, values[i]);
