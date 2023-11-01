@@ -198,28 +198,52 @@ impl Memory {
         self.write_byte(addr + 1, ((value & 0xff00) >> 8) as u8)
     }
 
-    pub fn write_zero_page(&mut self, _pc: &mut Word, _value: u8) {
-        todo!();
+    pub fn write_zero_page(&mut self, pc: &mut Word, value: u8) {
+        let addr: u8 = self.read(*pc);
+        self.write(addr as u16, value);
+
+        *pc += 1;
     }
 
-    pub fn write_zero_page_reg(&mut self, _pc: &mut Word, _x: u8, _value: u8) {
-        todo!();
+    pub fn write_zero_page_reg(&mut self, pc: &mut Word, x: u8, value: u8) {
+        let addr: u8 = self.read(*pc);
+        let addr_final = add_mod_256(addr, x);
+        self.write(addr_final as u16, value);
+
+        *pc += 1;
     }
 
-    pub fn write_absolute(&mut self, _pc: &mut Word, _value: u8) {
-        todo!();
+    pub fn write_absolute(&mut self, pc: &mut Word, value: u8) {
+        let addr: u16 = self.read(*pc);
+        self.write(addr, value);
+
+        *pc += 2;
     }
 
-    pub fn write_absolute_reg(&mut self, _pc: &mut Word, _x: u8, _value: u8) {
-        todo!();
+    pub fn write_absolute_reg(&mut self, pc: &mut Word, x: u8, value: u8) {
+        let addr: u16 = self.read(*pc);
+        let addr_final = add_mod_65536(addr, x as u16);
+        self.write(addr_final, value);
+
+        *pc += 2;
     }
 
-    pub fn write_indirect_x(&mut self, _pc: &mut Word, _x: u8, _value: u8) {
-        todo!();
+    pub fn write_indirect_x(&mut self, pc: &mut Word, x: u8, value: u8) {
+        let addr: u8 = self.read(*pc);
+        let addr_zp = add_mod_256(addr, x);
+        let addr_final: u16 = self.read(addr_zp as u16);
+        self.write(addr_final, value);
+
+        *pc += 1;
     }
 
-    pub fn write_indirect_y(&mut self, _pc: &mut Word, _y: u8, _value: u8) {
-        todo!();
+    pub fn write_indirect_y(&mut self, pc: &mut Word, y: u8, value: u8) {
+        let addr: u8 = self.read(*pc);
+        let addr_on_zp: u16 = self.read(addr as u16);
+        let addr_final = add_mod_65536(addr_on_zp, y as u16);
+        self.write(addr_final, value);
+
+        *pc += 1;
     }
 
     pub fn read_immediate(&self, pc: &mut Word) -> u8 {
