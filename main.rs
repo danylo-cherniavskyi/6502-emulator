@@ -918,216 +918,90 @@ macro_rules! pull_reg {
 
 impl CPU {
     push_reg! {push_accumulator, a}
-
     push_reg! {push_processor_status, status}
-
     pull_reg! {pull_accumulator, a, true}
-
     pull_reg! {pull_processor_status, status, false}
 }
 
-macro_rules! logic_immediate {
-    ($func_name: ident, $op_func: expr) => {
+macro_rules! logic {
+    ($func_name: ident, $op_func: expr, $reg_name: ident, $addr_mode: expr) => {
         fn $func_name(&mut self, memory: &Memory) {
-            let value: u8 = memory.read(self.pc);
-            let res = $op_func(self.a, value);
+            use std::collections::HashMap;
+            let mut cycles: HashMap<AddressingMode, u64> = HashMap::new();
+            cycles.insert(AddressingMode::Immediate, 2);
+            cycles.insert(AddressingMode::ZeroPage, 3);
+            cycles.insert(AddressingMode::ZeroPageReg, 4);
+            cycles.insert(AddressingMode::Absolute, 4);
+            cycles.insert(AddressingMode::AbsoluteReg, 4);
+            cycles.insert(AddressingMode::IndirectX, 6);
+            cycles.insert(AddressingMode::IndirectY, 5);
 
-            self.a = res;
+            let mut page_crossed = false;
 
+            let value1 = self.a;
+            let value2 = match $addr_mode {
+                AddressingMode::Immediate => memory.read_immediate(&mut self.pc),
+                AddressingMode::ZeroPage => memory.read_zero_page(&mut self.pc),
+                AddressingMode::ZeroPageReg => memory.read_zero_page_x(&mut self.pc, self.x),
+                AddressingMode::Absolute => memory.read_absolute(&mut self.pc),
+                AddressingMode::AbsoluteReg => memory.read_absolute_x_check_crossing(&mut self.pc, self.$reg_name, &mut page_crossed),
+                AddressingMode::IndirectX => memory.read_indirect_x(&mut self.pc, self.x),
+                AddressingMode::IndirectY => memory.read_indirect_y_check_crossing(&mut self.pc, self.y, &mut page_crossed),
+            };
+
+            self.a = $op_func(value1, value2);
             self.test_number(self.a);
 
-            self.pc += 1;
-            self.cycles += 2;
-        }
-    };
-}
-
-macro_rules! logic_zero_page {
-    ($func_name: ident, $op_func: expr) => {
-        fn $func_name(&mut self, memory: &Memory) {
-            let value_addr_zp: u8 = memory.read(self.pc);
-            let value: u8 = memory.read(value_addr_zp as u16);
-            let res = $op_func(self.a, value);
-
-            self.a = res;
-
-            self.test_number(self.a);
-
-            self.pc += 1;
-            self.cycles += 3;
-        }
-    };
-}
-
-macro_rules! logic_zero_page_x {
-    ($func_name: ident, $op_func: expr) => {
-        fn $func_name(&mut self, memory: &Memory) {
-            let value_addr_zp: u8 = memory.read(self.pc);
-            let addr_actual = add_mod_256(value_addr_zp, self.x);
-            let value: u8 = memory.read(addr_actual as u16);
-            let res = $op_func(self.a, value);
-
-            self.a = res;
-
-            self.test_number(self.a);
-
-            self.pc += 1;
-            self.cycles += 4;
-        }
-    };
-}
-
-macro_rules! logic_absolute {
-    ($func_name: ident, $op_func: expr) => {
-        fn $func_name(&mut self, memory: &Memory) {
-            let addr: u16 = memory.read(self.pc);
-            let value: u8 = memory.read(addr);
-            let res = $op_func(self.a, value);
-
-            self.a = res;
-
-            self.test_number(self.a);
-
-            self.pc += 2;
-            self.cycles += 4
-        }
-    };
-}
-
-macro_rules! logic_absolute_reg {
-    ($func_name: ident, $op_func: expr, $reg_name: ident) => {
-        fn $func_name(&mut self, memory: &Memory) {
-            let addr: u16 = memory.read(self.pc);
-            let addr_actual = add_mod_65536(addr, self.$reg_name as u16);
-            let value: u8 = memory.read(addr_actual);
-            let res = $op_func(self.a, value);
-
-            self.a = res;
-
-            self.test_number(self.a);
-
-            self.pc += 2;
-            self.cycles += 4;
-
-            if addr_actual >= 0x100 {
-                self.cycles += 1;
-            }
-        }
-    };
-}
-
-macro_rules! logic_indirect_x {
-    ($func_name: ident, $op_func: expr) => {
-        fn $func_name(&mut self, memory: &Memory) {
-            let addr: u8 = memory.read(self.pc);
-            let addr_zp_actual = add_mod_256(addr, self.x);
-            let addr_on_zp: u16 = memory.read(addr_zp_actual as u16);
-            let value: u8 = memory.read(addr_on_zp);
-            let res = $op_func(self.a, value);
-
-            self.a = res;
-
-            self.test_number(self.a);
-
-            self.pc += 1;
-            self.cycles += 6;
-        }
-    };
-}
-
-macro_rules! logic_indirect_y {
-    ($func_name: ident, $op_func: expr) => {
-        fn $func_name(&mut self, memory: &Memory) {
-            let addr: u8 = memory.read(self.pc);
-            let addr_on_zp: u16 = memory.read(addr as u16);
-            let addr_actual = add_mod_65536(addr_on_zp, self.y as u16);
-            let value: u8 = memory.read(addr_actual);
-            let res = $op_func(self.a, value);
-
-            self.a = res;
-
-            self.test_number(self.a);
-
-            self.pc += 1;
-            self.cycles += 5;
-
-            if addr_actual >= 0x100 {
-                self.cycles += 1;
-            }
+            self.cycles += cycles[$addr_mode] + if page_crossed {1} else {0};
         }
     };
 }
 
 impl CPU {
-    logic_immediate! {and_immediate, |n1, n2| n1 & n2}
+    logic! {and_immediate, |n1, n2| n1 & n2, x, &AddressingMode::Immediate}
+    logic! {and_zero_page, |n1, n2| n1 & n2, x, &AddressingMode::ZeroPage}
+    logic! {and_zero_page_x, |n1, n2| n1 & n2, x, &AddressingMode::ZeroPageReg}
+    logic! {and_absolute, |n1, n2| n1 & n2, x, &AddressingMode::Absolute}
+    logic! {and_absolute_x, |n1, n2| n1 & n2, x, &AddressingMode::AbsoluteReg}
+    logic! {and_absolute_y, |n1, n2| n1 & n2, y, &AddressingMode::AbsoluteReg}
+    logic! {and_indirect_x, |n1, n2| n1 & n2, x, &AddressingMode::IndirectX}
+    logic! {and_indirect_y, |n1, n2| n1 & n2, y, &AddressingMode::IndirectY}
 
-    logic_zero_page! {and_zero_page, |n1, n2| n1 & n2}
+    logic! {eor_immediate, |n1, n2| n1 ^ n2, x, &AddressingMode::Immediate}
+    logic! {eor_zero_page, |n1, n2| n1 ^ n2, x, &AddressingMode::ZeroPage}
+    logic! {eor_zero_page_x, |n1, n2| n1 ^ n2, x, &AddressingMode::ZeroPageReg}
+    logic! {eor_absolute, |n1, n2| n1 ^ n2, x, &AddressingMode::Absolute}
+    logic! {eor_absolute_x, |n1, n2| n1 ^ n2, x, &AddressingMode::AbsoluteReg}
+    logic! {eor_absolute_y, |n1, n2| n1 ^ n2, y, &AddressingMode::AbsoluteReg}
+    logic! {eor_indirect_x, |n1, n2| n1 ^ n2, x, &AddressingMode::IndirectX}
+    logic! {eor_indirect_y, |n1, n2| n1 ^ n2, y, &AddressingMode::IndirectY}
 
-    logic_zero_page_x! {and_zero_page_x, |n1, n2| n1 & n2}
-
-    logic_absolute! {and_absolute, |n1, n2| n1 & n2}
-
-    logic_absolute_reg! {and_absolute_x, |n1, n2| n1 & n2, x}
-
-    logic_absolute_reg! {and_absolute_y, |n1, n2| n1 & n2, y}
-
-    logic_indirect_x! {and_indirect_x, |n1, n2| n1 & n2}
-
-    logic_indirect_y! {and_indirect_y, |n1, n2| n1 & n2}
-
-    logic_immediate! {eor_immediate, |n1, n2| n1 ^ n2}
-
-    logic_zero_page! {eor_zero_page, |n1, n2| n1 ^ n2}
-
-    logic_zero_page_x! {eor_zero_page_x, |n1, n2| n1 ^ n2}
-
-    logic_absolute! {eor_absolute, |n1, n2| n1 ^ n2}
-
-    logic_absolute_reg! {eor_absolute_x, |n1, n2| n1 ^ n2, x}
-
-    logic_absolute_reg! {eor_absolute_y, |n1, n2| n1 ^ n2, y}
-
-    logic_indirect_x! {eor_indirect_x, |n1, n2| n1 ^ n2}
-
-    logic_indirect_y! {eor_indirect_y, |n1, n2| n1 ^ n2}
-
-    logic_immediate! {ora_immediate, |n1, n2| n1 | n2}
-
-    logic_zero_page! {ora_zero_page, |n1, n2| n1 | n2}
-
-    logic_zero_page_x! {ora_zero_page_x, |n1, n2| n1 | n2}
-
-    logic_absolute! {ora_absolute, |n1, n2| n1 | n2}
-
-    logic_absolute_reg! {ora_absolute_x, |n1, n2| n1 | n2, x}
-
-    logic_absolute_reg! {ora_absolute_y, |n1, n2| n1 | n2, y}
-
-    logic_indirect_x! {ora_indirect_x, |n1, n2| n1 | n2}
-
-    logic_indirect_y! {ora_indirect_y, |n1, n2| n1 | n2}
+    logic! {ora_immediate, |n1, n2| n1 | n2, x, &AddressingMode::Immediate}
+    logic! {ora_zero_page, |n1, n2| n1 | n2, x, &AddressingMode::ZeroPage}
+    logic! {ora_zero_page_x, |n1, n2| n1 | n2, x, &AddressingMode::ZeroPageReg}
+    logic! {ora_absolute, |n1, n2| n1 | n2, x, &AddressingMode::Absolute}
+    logic! {ora_absolute_x, |n1, n2| n1 | n2, x, &AddressingMode::AbsoluteReg}
+    logic! {ora_absolute_y, |n1, n2| n1 | n2, y, &AddressingMode::AbsoluteReg}
+    logic! {ora_indirect_x, |n1, n2| n1 | n2, x, &AddressingMode::IndirectX}
+    logic! {ora_indirect_y, |n1, n2| n1 | n2, y, &AddressingMode::IndirectY}
 
     fn bit_zero_page(&mut self, memory: &Memory) {
-        let addr: u8 = memory.read(self.pc);
-        let value: u8 = memory.read(addr as u16);
+        let value: u8 = memory.read_zero_page(&mut self.pc);
 
         self.set_zero((self.a & value) == 0);
         self.set_overflow((value & 0b0100_0000) == 0b0100_0000);
         self.set_negative((value & 0b1000_0000) == 0b1000_0000);
 
-        self.pc += 1;
         self.cycles += 3;
     }
 
     fn bit_absolute(&mut self, memory: &Memory) {
-        let addr: u16 = memory.read(self.pc);
-        let value: u8 = memory.read(addr);
+        let value: u8 = memory.read_absolute(&mut self.pc);
 
         self.set_zero((self.a & value) == 0);
         self.set_overflow((value & 0b0100_0000) == 0b0100_0000);
         self.set_negative((value & 0b1000_0000) == 0b1000_0000);
 
-        self.pc += 2;
         self.cycles += 4;
     }
 }
