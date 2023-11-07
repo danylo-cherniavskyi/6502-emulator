@@ -1830,7 +1830,7 @@ mod tests {
             }
         };
     }
-
+    // CMP
     test_compare! {test_cmp_immediate, a, Instruction::CMP_IM, &AddressingMode::Immediate, Register::None}
     test_compare! {test_cmp_zero_page, a, Instruction::CMP_ZP, &AddressingMode::ZeroPage, Register::None}
     test_compare! {test_cmp_zero_page_x, a, Instruction::CMP_ZP_X, &AddressingMode::ZeroPageReg, Register::X}
@@ -1839,14 +1839,197 @@ mod tests {
     test_compare! {test_cmp_absolute_y, a, Instruction::CMP_ABS_Y, &AddressingMode::AbsoluteReg, Register::Y}
     test_compare! {test_cmp_indirect_x, a, Instruction::CMP_IN_X, &AddressingMode::IndirectX, Register::X}
     test_compare! {test_cmp_indirect_y, a, Instruction::CMP_IN_Y, &AddressingMode::IndirectY, Register::Y}
-
+    // CPX
     test_compare! {test_cpx_immediate, x, Instruction::CMP_IM, &AddressingMode::Immediate, Register::None}
     test_compare! {test_cpx_zero_page, x, Instruction::CMP_ZP, &AddressingMode::ZeroPage, Register::None}
     test_compare! {test_cpx_absolute, x, Instruction::CMP_ABS, &AddressingMode::Absolute, Register::None}
-
+    // CPY
     test_compare! {test_cpy_immediate, y, Instruction::CMP_IM, &AddressingMode::Immediate, Register::None}
     test_compare! {test_cpy_zero_page, y, Instruction::CMP_ZP, &AddressingMode::ZeroPage, Register::None}
     test_compare! {test_cpy_absolute, y, Instruction::CMP_ABS, &AddressingMode::Absolute, Register::None}
+
+    enum ArithmeticOperation {
+        Addition,
+        Substraction
+    }
+
+    macro_rules! test_arithmetic {
+        ($func_name: ident, $instr_name: expr, $op_type: expr, $addr_mode: expr, $reg_type: expr) => {
+            #[test]
+            fn $func_name() {
+                use std::collections::HashMap;
+                let mut cpu = CPU {
+                    ..Default::default()
+                };
+
+                let mut memory = Memory {
+                    ..Default::default()
+                };
+
+                cpu.reset();
+                let cpu_copy = cpu.clone();
+
+                let mut pc_increments: HashMap<AddressingMode, u16> = HashMap::new();
+                pc_increments.insert(AddressingMode::Immediate, 2);
+                pc_increments.insert(AddressingMode::ZeroPage, 2);
+                pc_increments.insert(AddressingMode::ZeroPageReg, 2);
+                pc_increments.insert(AddressingMode::Absolute, 3);
+                pc_increments.insert(AddressingMode::AbsoluteReg, 3);
+                pc_increments.insert(AddressingMode::IndirectX, 2);
+                pc_increments.insert(AddressingMode::IndirectY, 2);
+
+                let mut cycles_increments: HashMap<AddressingMode, u64> = HashMap::new();
+                cycles_increments.insert(AddressingMode::Immediate, 2);
+                cycles_increments.insert(AddressingMode::ZeroPage, 3);
+                cycles_increments.insert(AddressingMode::ZeroPageReg, 4);
+                cycles_increments.insert(AddressingMode::Absolute, 4);
+                cycles_increments.insert(AddressingMode::AbsoluteReg, 4);
+                cycles_increments.insert(AddressingMode::IndirectX, 6);
+                cycles_increments.insert(AddressingMode::IndirectY, 5);
+
+                let mut additional_cycles = [0, 0, 0, 0];
+
+                let addresses_zp = [0x13u8, 0x69, 0xFF, 0xAB];
+                let x_values = [0x10, 0x00u8, 0x16, 0x4A];
+                let y_values = [0x23, 0x00u8, 0x43, 0xBB];
+                let addresses_zp_final_x = [0x23u8, 0x69, 0x15, 0xF5];
+                let addresses_absolute = [0x0013u16, 0xfff4, 0xABCD, 0xffff];
+                let addresses_absolute_final_x = [0x0023u16, 0xfff4, 0xABE3, 0x0049];
+                let addresses_absolute_final_y = [0x0036u16, 0xfff4, 0xAC10, 0x00BA];
+
+                let overflow_flags = [true, false, true, false, true];
+                let values1 = [123u8, 152, 234, 10 , 128];
+                let values2 = [123u8, 167, 13,  255, 127];
+                let addition: [(u8, bool); 5] = [(247u8, false), (63, true), (248, false), (9, true), (0, true)];
+                let substraction: [(u8, bool); 5] = [(0u8, false), (240, false), (221, false), (10, false), (129, true)];
+
+                let operation = match $op_type {
+                    ArithmeticOperation::Addition => addition,
+                    ArithmeticOperation::Substraction => substraction,
+                };
+
+                for i in 0..3 {
+                    match $addr_mode {
+                        AddressingMode::Immediate => {
+                            memory.write(2 * i, u8::from($instr_name));
+                            memory.write(2 * i + 1, values2[i as usize]);
+                        }
+                        AddressingMode::ZeroPage => {
+                            memory.write(2 * i, u8::from($instr_name));
+                            memory.write(2 * i + 1, addresses_zp[i as usize]);
+                            memory.write(addresses_zp[i as usize] as u16, values2[i as usize]);
+                        }
+                        AddressingMode::ZeroPageReg => {
+                            memory.write(2 * i, u8::from($instr_name));
+                            memory.write(2 * i + 1, addresses_zp[i as usize]);
+                            memory.write(
+                                addresses_zp_final_x[i as usize] as u16,
+                                values2[i as usize],
+                            );
+                        }
+                        AddressingMode::Absolute => {
+                            memory.write(3 * i, u8::from($instr_name));
+                            memory.write(3 * i + 1, addresses_absolute[i as usize]);
+                            memory.write(addresses_absolute[i as usize], values2[i as usize]);
+                        }
+                        AddressingMode::AbsoluteReg => {
+                            memory.write(3 * i, u8::from($instr_name));
+                            memory.write(3 * i + 1, addresses_absolute[i as usize]);
+                            if $reg_type == Register::X {
+                                memory.write(
+                                    addresses_absolute_final_x[i as usize],
+                                    values2[i as usize],
+                                );
+                                if addresses_absolute_final_x[i as usize] > 0xff {
+                                    additional_cycles[i as usize] += 1;
+                                }
+                            } else if $reg_type == Register::Y {
+                                memory.write(
+                                    addresses_absolute_final_y[i as usize],
+                                    values2[i as usize],
+                                );
+                                if addresses_absolute_final_y[i as usize] > 0xff {
+                                    additional_cycles[i as usize] += 1;
+                                }
+                            }
+                        }
+                        AddressingMode::IndirectX => {
+                            memory.write(2 * i, u8::from($instr_name));
+                            memory.write(2 * i + 1, addresses_zp[i as usize]);
+                            memory.write(
+                                addresses_zp_final_x[i as usize] as u16,
+                                addresses_absolute[i as usize],
+                            );
+                            memory.write(addresses_absolute[i as usize], values2[i as usize])
+                        }
+                        AddressingMode::IndirectY => {
+                            memory.write(2 * i, u8::from($instr_name));
+                            memory.write(2 * i + 1, addresses_zp[i as usize]);
+                            memory.write(
+                                addresses_zp[i as usize] as u16,
+                                addresses_absolute[i as usize],
+                            );
+                            memory
+                                .write(addresses_absolute_final_y[i as usize], values2[i as usize]);
+                            if addresses_absolute_final_y[i as usize] > 0xff {
+                                additional_cycles[i as usize] += 1;
+                            }
+                        }
+                    }
+                }
+
+                for i in 0..3 {
+                    let pc = cpu.pc;
+                    let cycles = cpu.cycles;
+                    let value = operation[i].0;
+                    let instruction = cpu.fetch_instruction(&memory);
+
+                    cpu.x = x_values[i];
+                    cpu.y = y_values[i];
+                    cpu.a = values1[i];
+                    cpu.set_overflow(overflow_flags[i]);
+
+                    cpu.execute(&mut memory, instruction);
+
+                    assert_eq!(cpu.pc, pc + pc_increments[$addr_mode]);
+                    assert_eq!(
+                        cpu.cycles,
+                        cycles + cycles_increments[$addr_mode] + additional_cycles[i]
+                    );
+                    assert_eq!(cpu.get_carry(), (value as i8) > 0);
+                    assert_eq!(cpu.get_zero(), value == 0);
+                    assert_eq!(
+                        cpu.get_interrupt_disable(),
+                        cpu_copy.get_interrupt_disable()
+                    );
+                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
+                    assert_eq!(cpu.get_overflow(), operation[i].1);
+                    assert_eq!(cpu.get_negative(), (value as i8) < 0);
+                }
+            }
+        };
+    }
+    // ADC
+    test_arithmetic! {test_adc_immediate, Instruction::ADC_IM, ArithmeticOperation::Addition, &AddressingMode::Immediate, Register::None}
+    test_arithmetic! {test_adc_zero_page, Instruction::ADC_ZP, ArithmeticOperation::Addition, &AddressingMode::ZeroPage, Register::None}
+    test_arithmetic! {test_adc_zero_page_x, Instruction::ADC_ZP_X, ArithmeticOperation::Addition, &AddressingMode::ZeroPageReg, Register::X}
+    test_arithmetic! {test_adc_absolute, Instruction::ADC_ABS, ArithmeticOperation::Addition, &AddressingMode::Absolute, Register::None}
+    test_arithmetic! {test_adc_absolute_x, Instruction::ADC_ABS_X, ArithmeticOperation::Addition, &AddressingMode::AbsoluteReg, Register::X}
+    test_arithmetic! {test_adc_absolute_y, Instruction::ADC_ABS_Y, ArithmeticOperation::Addition, &AddressingMode::AbsoluteReg, Register::Y}
+    test_arithmetic! {test_adc_indirect_x, Instruction::ADC_IN_X, ArithmeticOperation::Addition, &AddressingMode::IndirectX, Register::X}
+    test_arithmetic! {test_adc_indirect_y, Instruction::ADC_IN_Y, ArithmeticOperation::Addition, &AddressingMode::IndirectY, Register::Y}
+
+    // SBC
+    test_arithmetic! {test_sbc_immediate, Instruction::SBC_IM, ArithmeticOperation::Substraction, &AddressingMode::Immediate, Register::None}
+    test_arithmetic! {test_sbc_zero_page, Instruction::SBC_ZP, ArithmeticOperation::Substraction, &AddressingMode::ZeroPage, Register::None}
+    test_arithmetic! {test_sbc_zero_page_x, Instruction::SBC_ZP_X, ArithmeticOperation::Substraction, &AddressingMode::ZeroPageReg, Register::X}
+    test_arithmetic! {test_sbc_absolute, Instruction::SBC_ABS, ArithmeticOperation::Substraction, &AddressingMode::Absolute, Register::None}
+    test_arithmetic! {test_sbc_absolute_x, Instruction::SBC_ABS_X, ArithmeticOperation::Substraction, &AddressingMode::AbsoluteReg, Register::X}
+    test_arithmetic! {test_sbc_absolute_y, Instruction::SBC_ABS_Y, ArithmeticOperation::Substraction, &AddressingMode::AbsoluteReg, Register::Y}
+    test_arithmetic! {test_sbc_indirect_x, Instruction::SBC_IN_X, ArithmeticOperation::Substraction, &AddressingMode::IndirectX, Register::X}
+    test_arithmetic! {test_sbc_indirect_y, Instruction::SBC_IN_Y, ArithmeticOperation::Substraction, &AddressingMode::IndirectY, Register::Y}
+
 
     #[test]
     fn test_bit_zero_page() {
