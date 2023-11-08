@@ -895,6 +895,43 @@ impl CPU {
     }
 }
 
+macro_rules! cmp {
+    ($func_name: ident, $reg_name: ident, $addr_mode: expr, $addr_reg: ident) => {
+        fn $func_name(&mut self, memory: &Memory) {
+            use std::collections::HashMap;
+            let mut cycles: HashMap<AddressingMode, u64> = HashMap::new();
+            cycles.insert(AddressingMode::Immediate, 2);
+            cycles.insert(AddressingMode::ZeroPage, 3);
+            cycles.insert(AddressingMode::ZeroPageReg, 4);
+            cycles.insert(AddressingMode::Absolute, 4);
+            cycles.insert(AddressingMode::AbsoluteReg, 4);
+            cycles.insert(AddressingMode::IndirectX, 6);
+            cycles.insert(AddressingMode::IndirectY, 5);
+
+            let mut page_crossed = false;
+
+            let value_reg = self.$reg_name;
+            let value_mem = match $addr_mode {
+                AddressingMode::Immediate => memory.read_immediate(&mut self.pc),
+                AddressingMode::ZeroPage => memory.read_zero_page(&mut self.pc),
+                AddressingMode::ZeroPageReg => memory.read_zero_page_x(&mut self.pc, self.x),
+                AddressingMode::Absolute => memory.read_absolute(&mut self.pc),
+                AddressingMode::AbsoluteReg => memory.read_absolute_x_check_crossing(&mut self.pc, self.$addr_reg, &mut page_crossed),
+                AddressingMode::IndirectX => memory.read_indirect_x(&mut self.pc, self.x),
+                AddressingMode::IndirectY => memory.read_indirect_y_check_crossing(&mut self.pc, self.y, &mut page_crossed),
+            };
+
+            let value = value_reg as i8 - value_mem as i8;
+
+            self.set_zero(value == 0);
+            self.set_negative(value < 0);
+            self.set_carry(value >= 0);
+
+            self.cycles += cycles[$addr_mode] + if page_crossed {1} else {0};
+        }
+    };
+}
+
 impl CPU {
     fn adc_immediate(&mut self, memory: &Memory) {
         todo!();
@@ -960,9 +997,7 @@ impl CPU {
         todo!();
     }
 
-    fn cmp_immediate(&mut self, memory: &Memory) {
-        todo!();
-    }
+    cmp! {cmp_immediate, a, &AddressingMode::Immediate, x}
 
     fn cmp_zero_page(&mut self, memory: &Memory) {
         todo!();
@@ -1815,7 +1850,7 @@ mod tests {
                         cpu.cycles,
                         cycles + cycles_increments[$addr_mode] + additional_cycles[i]
                     );
-                    assert_eq!(cpu.get_carry(), (value as i8) > 0);
+                    assert_eq!(cpu.get_carry(), (value as i8) >= 0);
                     assert_eq!(cpu.get_zero(), value == 0);
                     assert_eq!(
                         cpu.get_interrupt_disable(),
@@ -1840,13 +1875,13 @@ mod tests {
     test_compare! {test_cmp_indirect_x, a, Instruction::CMP_IN_X, &AddressingMode::IndirectX, Register::X}
     test_compare! {test_cmp_indirect_y, a, Instruction::CMP_IN_Y, &AddressingMode::IndirectY, Register::Y}
     // CPX
-    test_compare! {test_cpx_immediate, x, Instruction::CMP_IM, &AddressingMode::Immediate, Register::None}
-    test_compare! {test_cpx_zero_page, x, Instruction::CMP_ZP, &AddressingMode::ZeroPage, Register::None}
-    test_compare! {test_cpx_absolute, x, Instruction::CMP_ABS, &AddressingMode::Absolute, Register::None}
+    test_compare! {test_cpx_immediate, x, Instruction::CPX_IM, &AddressingMode::Immediate, Register::None}
+    test_compare! {test_cpx_zero_page, x, Instruction::CPX_ZP, &AddressingMode::ZeroPage, Register::None}
+    test_compare! {test_cpx_absolute, x, Instruction::CPX_ABS, &AddressingMode::Absolute, Register::None}
     // CPY
-    test_compare! {test_cpy_immediate, y, Instruction::CMP_IM, &AddressingMode::Immediate, Register::None}
-    test_compare! {test_cpy_zero_page, y, Instruction::CMP_ZP, &AddressingMode::ZeroPage, Register::None}
-    test_compare! {test_cpy_absolute, y, Instruction::CMP_ABS, &AddressingMode::Absolute, Register::None}
+    test_compare! {test_cpy_immediate, y, Instruction::CPY_IM, &AddressingMode::Immediate, Register::None}
+    test_compare! {test_cpy_zero_page, y, Instruction::CPY_ZP, &AddressingMode::ZeroPage, Register::None}
+    test_compare! {test_cpy_absolute, y, Instruction::CPY_ABS, &AddressingMode::Absolute, Register::None}
 
     enum ArithmeticOperation {
         Addition,
