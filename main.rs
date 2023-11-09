@@ -998,58 +998,21 @@ impl CPU {
     }
 
     cmp! {cmp_immediate, a, &AddressingMode::Immediate, x}
+    cmp! {cmp_zero_page, a, &AddressingMode::ZeroPage, x}
+    cmp! {cmp_zero_page_x, a, &AddressingMode::ZeroPageReg, x}
+    cmp! {cmp_absolute, a, &AddressingMode::Absolute, x}
+    cmp! {cmp_absolute_x, a, &AddressingMode::AbsoluteReg, x}
+    cmp! {cmp_absolute_y, a, &AddressingMode::AbsoluteReg, y}
+    cmp! {cmp_indirect_x, a, &AddressingMode::IndirectX, x}
+    cmp! {cmp_indirect_y, a, &AddressingMode::IndirectY, y}
 
-    fn cmp_zero_page(&mut self, memory: &Memory) {
-        todo!();
-    }
+    cmp! {cpx_immediate, x, &AddressingMode::Immediate, y}
+    cmp! {cpx_zero_page, x, &AddressingMode::ZeroPage, y}
+    cmp! {cpx_absolute, x, &AddressingMode::Absolute, y}
 
-    fn cmp_zero_page_x(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn cmp_absolute(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn cmp_absolute_x(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn cmp_absolute_y(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn cmp_indirect_x(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn cmp_indirect_y(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn cpx_immediate(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn cpx_zero_page(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn cpx_absolute(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn cpy_immediate(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn cpy_zero_page(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn cpy_absolute(&mut self, memory: &Memory) {
-        todo!();
-    }
+    cmp! {cpy_immediate, y, &AddressingMode::Immediate, x}
+    cmp! {cpy_zero_page, y, &AddressingMode::ZeroPage, x}
+    cmp! {cpy_absolute, y, &AddressingMode::Absolute, x}
 }
 
 #[cfg(test)]
