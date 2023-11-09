@@ -895,6 +895,39 @@ impl CPU {
     }
 }
 
+macro_rules! arithmetic {
+    ($func_name: ident, $arithm_func: expr, $addr_mode: expr, $addr_reg: ident) => {
+        fn $func_name(&mut self, memory: &Memory) {
+            use std::collections::HashMap;
+            let mut cycles: HashMap<AddressingMode, u64> = HashMap::new();
+            cycles.insert(AddressingMode::Immediate, 2);
+            cycles.insert(AddressingMode::ZeroPage, 3);
+            cycles.insert(AddressingMode::ZeroPageReg, 4);
+            cycles.insert(AddressingMode::Absolute, 4);
+            cycles.insert(AddressingMode::AbsoluteReg, 4);
+            cycles.insert(AddressingMode::IndirectX, 6);
+            cycles.insert(AddressingMode::IndirectY, 5);
+
+            let mut page_crossed = false;
+
+            let value_reg = self.a;
+            let value_mem = match $addr_mode {
+                AddressingMode::Immediate => memory.read_immediate(&mut self.pc),
+                AddressingMode::ZeroPage => memory.read_zero_page(&mut self.pc),
+                AddressingMode::ZeroPageReg => memory.read_zero_page_x(&mut self.pc, self.x),
+                AddressingMode::Absolute => memory.read_absolute(&mut self.pc),
+                AddressingMode::AbsoluteReg => memory.read_absolute_x_check_crossing(&mut self.pc, self.$addr_reg, &mut page_crossed),
+                AddressingMode::IndirectX => memory.read_indirect_x(&mut self.pc, self.x),
+                AddressingMode::IndirectY => memory.read_indirect_y_check_crossing(&mut self.pc, self.y, &mut page_crossed),
+            };
+            let carry = self.get_carry();
+
+            self.cycles += cycles[$addr_mode] + if page_crossed {1} else {0};
+            $arithm_func(self, value_reg, value_mem, carry);
+        }
+    };
+}
+
 macro_rules! cmp {
     ($func_name: ident, $reg_name: ident, $addr_mode: expr, $addr_reg: ident) => {
         fn $func_name(&mut self, memory: &Memory) {
@@ -933,9 +966,17 @@ macro_rules! cmp {
 }
 
 impl CPU {
-    fn adc_immediate(&mut self, memory: &Memory) {
-        todo!();
+    fn addition(cpu: &mut CPU, n1: u8, n2: u8, c: bool) {
+        let value = n1 as i16 + n2 as i16 + (c as i16);
+        cpu.a = value as u8;
+        cpu.set_zero(value == 0);
+        cpu.set_negative((value as i8) < 0);
+        let carry = ((((n1 & 0b1000_0000) >> 7) == 1u8) || (((n2 & 0b1000_0000) >> 7) == 1u8)) && ((value as u8 & 0b1000_0000) == 1u8);
+        cpu.set_carry(carry);
+        cpu.set_overflow(value < 0 && n1 > 0 && n2 > 0 || value > 0 && (n1 as i8) < 0 && (n2 as i8) < 0);
     }
+
+    arithmetic! {adc_immediate, Self::addition, &AddressingMode::Immediate, x}
 
     fn adc_zero_page(&mut self, memory: &Memory) {
         todo!();
@@ -1985,7 +2026,8 @@ mod tests {
                     cpu.x = x_values[i];
                     cpu.y = y_values[i];
                     cpu.a = values1[i];
-                    cpu.set_overflow(overflow_flags[i]);
+
+                    cpu.set_carry(overflow_flags[i]);
 
                     cpu.execute(&mut memory, instruction);
 
@@ -1994,7 +2036,7 @@ mod tests {
                         cpu.cycles,
                         cycles + cycles_increments[$addr_mode] + additional_cycles[i]
                     );
-                    assert_eq!(cpu.get_carry(), (value as i8) > 0);
+                    assert_eq!(cpu.get_carry(), ((((values1[i] & 0b1000_0000) >> 7) == 1u8) || (((values2[i] & 0b1000_0000) >> 7) == 1u8)) && ((value as u8 & 0b1000_0000) == 1u8));
                     assert_eq!(cpu.get_zero(), value == 0);
                     assert_eq!(
                         cpu.get_interrupt_disable(),
