@@ -976,39 +976,26 @@ impl CPU {
         cpu.set_overflow(value < 0 && n1 > 0 && n2 > 0 || value > 0 && (n1 as i8) < 0 && (n2 as i8) < 0);
     }
 
+    fn substraction(cpu: &mut CPU, n1: u8, n2: u8, c: bool) {
+        let value = n1 as i16 - n2 as i16 - (1 - (c as i16));
+        cpu.a = value as u8;
+        cpu.set_zero(value == 0);
+        cpu.set_negative((value as i8) < 0);
+        let carry = ((((n1 & 0b1000_0000) >> 7) == 1u8) || (((n2 & 0b1000_0000) >> 7) == 1u8)) && ((value as u8 & 0b1000_0000) != 1u8);
+        cpu.set_carry(carry);
+        cpu.set_overflow((value as i8) > 0 && (n1 as i8) < 0 && (n2 as i8) > 0 || (value as i8) < 0 && (n1 as i8) > 0 && (n2 as i8) < 0);
+    }
+
     arithmetic! {adc_immediate, Self::addition, &AddressingMode::Immediate, x}
+    arithmetic! {adc_zero_page, Self::addition, &AddressingMode::ZeroPage, x}
+    arithmetic! {adc_zero_page_x, Self::addition, &AddressingMode::ZeroPageReg, x}
+    arithmetic! {adc_absolute, Self::addition, &AddressingMode::Absolute, x}
+    arithmetic! {adc_absolute_x, Self::addition, &AddressingMode::AbsoluteReg, x}
+    arithmetic! {adc_absolute_y, Self::addition, &AddressingMode::AbsoluteReg, y}
+    arithmetic! {adc_indirect_x, Self::addition, &AddressingMode::IndirectX, x}
+    arithmetic! {adc_indirect_y, Self::addition, &AddressingMode::IndirectY, y}
 
-    fn adc_zero_page(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn adc_zero_page_x(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn adc_absolute(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn adc_absolute_x(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn adc_absolute_y(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn adc_indirect_x(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn adc_indirect_y(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn sbc_immediate(&mut self, memory: &Memory) {
-        todo!();
-    }
+    arithmetic! {sbc_immediate, Self::substraction, &AddressingMode::Immediate, x}
 
     fn sbc_zero_page(&mut self, memory: &Memory) {
         todo!();
@@ -2031,12 +2018,19 @@ mod tests {
 
                     cpu.execute(&mut memory, instruction);
 
+                    assert_eq!(cpu.a, value);
                     assert_eq!(cpu.pc, pc + pc_increments[$addr_mode]);
                     assert_eq!(
                         cpu.cycles,
                         cycles + cycles_increments[$addr_mode] + additional_cycles[i]
                     );
-                    assert_eq!(cpu.get_carry(), ((((values1[i] & 0b1000_0000) >> 7) == 1u8) || (((values2[i] & 0b1000_0000) >> 7) == 1u8)) && ((value as u8 & 0b1000_0000) == 1u8));
+
+                    let carry = match $op_type {
+                        ArithmeticOperation::Addition => ((((values1[i] & 0b1000_0000) >> 7) == 1u8) || (((values2[i] & 0b1000_0000) >> 7) == 1u8)) && ((value as u8 & 0b1000_0000) == 1u8),
+                        ArithmeticOperation::Substraction => ((((values1[i] & 0b1000_0000) >> 7) == 1u8) || (((values2[i] & 0b1000_0000) >> 7) == 1u8)) && ((value as u8 & 0b1000_0000) != 1u8),
+                    };
+
+                    assert_eq!(cpu.get_carry(), carry);
                     assert_eq!(cpu.get_zero(), value == 0);
                     assert_eq!(
                         cpu.get_interrupt_disable(),
