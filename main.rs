@@ -1028,7 +1028,7 @@ mod tests {
 
     use super::*;
 
-    fn assert_flags(cpu: &CPU, cpu_copy: &CPU) {
+    fn assert_cpu(cpu: &CPU, cpu_copy: &CPU) {
         assert_eq!(cpu.cycles, cpu_copy.cycles, "Amount of cycles used should be {}, but found {}", cpu_copy.cycles, cpu.cycles);
         assert_eq!(cpu.a, cpu_copy.a, "Register a value should be {}, but found {}", cpu_copy.a, cpu.a);
         assert_eq!(cpu.x, cpu_copy.x, "Register x value should be {}, but found {}", cpu_copy.x, cpu.x);
@@ -1180,7 +1180,7 @@ mod tests {
                     cpu_copy.cycles = cycles + cycles_increments[$addr_mode] + additional_cycles[i];
                     cpu_copy.set_zero(value == 0);
                     cpu_copy.set_negative((value as i8) < 0);
-                    assert_flags(&cpu, &cpu_copy);
+                    assert_cpu(&cpu, &cpu_copy);
                 }
             }
         };
