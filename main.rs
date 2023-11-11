@@ -1028,6 +1028,22 @@ mod tests {
 
     use super::*;
 
+    fn assert_flags(cpu: &CPU, cpu_copy: &CPU) {
+        assert_eq!(cpu.cycles, cpu_copy.cycles, "Amount of cycles used should be {}, but found {}", cpu_copy.cycles, cpu.cycles);
+        assert_eq!(cpu.a, cpu_copy.a, "Register a value should be {}, but found {}", cpu_copy.a, cpu.a);
+        assert_eq!(cpu.x, cpu_copy.x, "Register x value should be {}, but found {}", cpu_copy.x, cpu.x);
+        assert_eq!(cpu.y, cpu_copy.y, "Register y value should be {}, but found {}", cpu_copy.y, cpu.y);
+        assert_eq!(cpu.pc, cpu_copy.pc, "Program counter should be {}, but found {}", cpu_copy.pc, cpu.pc);
+        assert_eq!(cpu.sp, cpu_copy.sp, "Stack pointer value should be {}, but found {}", cpu_copy.sp, cpu.sp);
+        assert_eq!(cpu.get_carry(), cpu_copy.get_carry(), "Carry flag should be {}, but found {}!", cpu.get_carry(), cpu_copy.get_carry());
+        assert_eq!(cpu.get_zero(), cpu_copy.get_zero(), "Zero flag should be {}, but found {}!", cpu.get_zero(), cpu_copy.get_zero());
+        assert_eq!(cpu.get_interrupt_disable(), cpu_copy.get_interrupt_disable(), "Interrupt disable flag should be {}, but found {}!", cpu.get_interrupt_disable(), cpu_copy.get_interrupt_disable());
+        assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode(), "Decimal mode flag should be {}, but found {}!", cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
+        assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command(), "Break command flag should be {}, but found {}!", cpu.get_break_command(), cpu_copy.get_break_command());
+        assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow(), "Overflow flag should be {}, but found {}!", cpu.get_overflow(), cpu_copy.get_overflow());
+        assert_eq!(cpu.get_negative(), cpu_copy.get_negative(), "Negative flag should be {}, but found {}!", cpu.get_negative(), cpu_copy.get_negative());
+    }
+
     macro_rules! test_ld {
         // reg_type is required for ABS_REG instructions only. For other instructions use Register::None
         ($func_name: ident, $reg_name: ident, $instr_name: expr, $addr_mode: expr, $reg_type: expr) => {
@@ -1043,7 +1059,7 @@ mod tests {
                 };
 
                 cpu.reset();
-                let cpu_copy = cpu.clone();
+                let mut cpu_copy = cpu.clone();
 
                 let mut pc_increments: HashMap<AddressingMode, u16> = HashMap::new();
                 pc_increments.insert(AddressingMode::Immediate, 2);
@@ -1157,22 +1173,14 @@ mod tests {
                     cpu.y = y_values[i];
                     cpu.execute(&mut memory, instruction);
 
-                    assert_eq!(cpu.$reg_name, value);
-                    assert_eq!(cpu.pc, pc + pc_increments[$addr_mode]);
-                    assert_eq!(
-                        cpu.cycles,
-                        cycles + cycles_increments[$addr_mode] + additional_cycles[i]
-                    );
-                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
-                    assert_eq!(cpu.get_zero(), value == 0);
-                    assert_eq!(
-                        cpu.get_interrupt_disable(),
-                        cpu_copy.get_interrupt_disable()
-                    );
-                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
-                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
-                    assert_eq!(cpu.get_negative(), (value as i8) < 0);
+                    cpu_copy.x = x_values[i];
+                    cpu_copy.y = y_values[i];
+                    cpu_copy.$reg_name = value;
+                    cpu_copy.pc = pc + pc_increments[$addr_mode];
+                    cpu_copy.cycles = cycles + cycles_increments[$addr_mode] + additional_cycles[i];
+                    cpu_copy.set_zero(value == 0);
+                    cpu_copy.set_negative((value as i8) < 0);
+                    assert_flags(&cpu, &cpu_copy);
                 }
             }
         };
