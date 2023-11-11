@@ -996,34 +996,13 @@ impl CPU {
     arithmetic! {adc_indirect_y, Self::addition, &AddressingMode::IndirectY, y}
 
     arithmetic! {sbc_immediate, Self::substraction, &AddressingMode::Immediate, x}
-
-    fn sbc_zero_page(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn sbc_zero_page_x(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn sbc_absolute(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn sbc_absolute_x(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn sbc_absolute_y(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn sbc_indirect_x(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn sbc_indirect_y(&mut self, memory: &Memory) {
-        todo!();
-    }
+    arithmetic! {sbc_zero_page, Self::substraction, &AddressingMode::ZeroPage, x}
+    arithmetic! {sbc_zero_page_x, Self::substraction, &AddressingMode::ZeroPageReg, x}
+    arithmetic! {sbc_absolute, Self::substraction, &AddressingMode::Absolute, x}
+    arithmetic! {sbc_absolute_x, Self::substraction, &AddressingMode::AbsoluteReg, x}
+    arithmetic! {sbc_absolute_y, Self::substraction, &AddressingMode::AbsoluteReg, y}
+    arithmetic! {sbc_indirect_x, Self::substraction, &AddressingMode::IndirectX, x}
+    arithmetic! {sbc_indirect_y, Self::substraction, &AddressingMode::IndirectY, y}
 
     cmp! {cmp_immediate, a, &AddressingMode::Immediate, x}
     cmp! {cmp_zero_page, a, &AddressingMode::ZeroPage, x}
