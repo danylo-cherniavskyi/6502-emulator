@@ -14,6 +14,7 @@ pub mod memory {
 
     #[derive(PartialEq, Eq, Hash, Debug)]
     pub enum AddressingMode {
+        Implied,
         Immediate,
         ZeroPage,
         ZeroPageReg,
