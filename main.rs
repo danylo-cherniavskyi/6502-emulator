@@ -157,6 +157,18 @@ pub enum Instruction {
     // INCREMENT Y
     INY,
 
+    // DECREMENTS
+    DEC_ZP,
+    DEC_ZP_X,
+    DEC_ABS,
+    DEC_ABS_X,
+
+    // DECREMENT X
+    DEX,
+
+    // DECREMENT Y
+    DEY,
+
     INVALID,
 }
 
@@ -289,6 +301,16 @@ impl From<u8> for Instruction {
             0xE8 => Instruction::INX,
             // INY
             0xC8 => Instruction::INY,
+            // Decrements
+            // DEC
+            0xC6 => Instruction::DEC_ZP,
+            0xD6 => Instruction::DEC_ZP_X,
+            0xCE => Instruction::DEC_ABS,
+            0xDE => Instruction::DEC_ABS_X,
+            // DEX
+            0xCA => Instruction::DEX,
+            // DEY
+            0x88 => Instruction::DEY,
 
             _ => Instruction::INVALID,
         }
@@ -425,7 +447,16 @@ impl From<Instruction> for u8 {
             Instruction::INX => 0xE8,
             // INY
             Instruction::INY => 0xC8,
-
+            // Decrements
+            // DEC
+            Instruction::DEC_ZP => 0xC6,
+            Instruction::DEC_ZP_X => 0xD6,
+            Instruction::DEC_ABS => 0xCE,
+            Instruction::DEC_ABS_X => 0xDE,
+            // DEX
+            Instruction::DEX => 0xCA,
+            // DEY
+            Instruction::DEY => 0x88,
 
             Instruction::INVALID => 0xFF,
         }
@@ -671,7 +702,16 @@ impl CPU {
             Instruction::INX => self.inx(memory),
             // INY
             Instruction::INY => self.iny(memory),
-
+            // Decrements
+            // DEC
+            Instruction::DEC_ZP => self.dec_zero_page(memory),
+            Instruction::DEC_ZP_X => self.dec_zero_page_x(memory),
+            Instruction::DEC_ABS => self.dec_absolute(memory),
+            Instruction::DEC_ABS_X => self.dec_absolute_x(memory),
+            // DEX
+            Instruction::DEX => self.dex(memory),
+            // DEY
+            Instruction::DEY => self.dey(memory),
 
             Instruction::INVALID => println!("Error: Invalid instruction"),
         }
@@ -1090,6 +1130,31 @@ impl CPU {
     fn iny(&mut self, memory: &Memory) {
         todo!();
     }
+
+    fn dec_zero_page(&mut self, memory: &mut Memory) {
+        todo!();
+    }
+
+    fn dec_zero_page_x(&mut self, memory: &mut Memory) {
+        todo!();
+    }
+
+    fn dec_absolute(&mut self, memory: &mut Memory) {
+        todo!();
+    }
+
+    fn dec_absolute_x(&mut self, memory: &mut Memory) {
+        todo!();
+    }
+
+    fn dex(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn dey(&mut self, memory: &Memory) {
+        todo!();
+    }
+
 }
 
 #[cfg(test)]
