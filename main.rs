@@ -145,6 +145,18 @@ pub enum Instruction {
     CPY_ZP,
     CPY_ABS,
 
+    // INCREMENTS
+    INC_ZP,
+    INC_ZP_X,
+    INC_ABS,
+    INC_ABS_X,
+
+    // INCREMENT X
+    INX,
+
+    // INCREMENT Y
+    INY,
+
     INVALID,
 }
 
@@ -267,6 +279,16 @@ impl From<u8> for Instruction {
             0xC0 => Instruction::CPY_IM,
             0xC4 => Instruction::CPY_ZP,
             0xCC => Instruction::CPY_ABS,
+            // Increments
+            // INC
+            0xE6 => Instruction::INC_ZP,
+            0xF6 => Instruction::INC_ZP_X,
+            0xEE => Instruction::INC_ABS,
+            0xFE => Instruction::INC_ABS_X,
+            // INX
+            0xE8 => Instruction::INX,
+            // INY
+            0xC8 => Instruction::INY,
 
             _ => Instruction::INVALID,
         }
@@ -393,6 +415,17 @@ impl From<Instruction> for u8 {
             Instruction::CPY_IM => 0xC0,
             Instruction::CPY_ZP => 0xC4,
             Instruction::CPY_ABS => 0xCC,
+            // Increments
+            // INC
+            Instruction::INC_ZP => 0xE6,
+            Instruction::INC_ZP_X => 0xF6,
+            Instruction::INC_ABS => 0xEE,
+            Instruction::INC_ABS_X => 0xFE,
+            // INX
+            Instruction::INX => 0xE8,
+            // INY
+            Instruction::INY => 0xC8,
+
 
             Instruction::INVALID => 0xFF,
         }
@@ -628,6 +661,17 @@ impl CPU {
             Instruction::CPY_IM => self.cpy_immediate(memory),
             Instruction::CPY_ZP => self.cpy_zero_page(memory),
             Instruction::CPY_ABS => self.cpy_absolute(memory),
+            // Increments
+            // INC
+            Instruction::INC_ZP => self.inc_zero_page(memory),
+            Instruction::INC_ZP_X => self.inc_zero_page_x(memory),
+            Instruction::INC_ABS => self.inc_absolute(memory),
+            Instruction::INC_ABS_X => self.inc_absolute_x(memory),
+            // INX
+            Instruction::INX => self.inx(memory),
+            // INY
+            Instruction::INY => self.iny(memory),
+
 
             Instruction::INVALID => println!("Error: Invalid instruction"),
         }
@@ -1020,6 +1064,32 @@ impl CPU {
     cmp! {cpy_immediate, y, &AddressingMode::Immediate, x}
     cmp! {cpy_zero_page, y, &AddressingMode::ZeroPage, x}
     cmp! {cpy_absolute, y, &AddressingMode::Absolute, x}
+}
+
+impl CPU {
+    fn inc_zero_page(&mut self, memory: &mut Memory) {
+        todo!();
+    }
+
+    fn inc_zero_page_x(&mut self, memory: &mut Memory) {
+        todo!();
+    }
+
+    fn inc_absolute(&mut self, memory: &mut Memory) {
+        todo!();
+    }
+
+    fn inc_absolute_x(&mut self, memory: &mut Memory) {
+        todo!();
+    }
+
+    fn inx(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn iny(&mut self, memory: &Memory) {
+        todo!();
+    }
 }
 
 #[cfg(test)]
