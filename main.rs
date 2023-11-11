@@ -1,6 +1,6 @@
 pub mod memory;
 
-use memory::memory::{AddressingMode, Memory, MemoryLike, Byte, Word};
+use memory::memory::{AddressingMode, Byte, Memory, MemoryLike, Word};
 
 #[derive(PartialEq, Eq)]
 pub enum Register {
@@ -747,10 +747,16 @@ macro_rules! ld {
                     memory.read_zero_page_x(&mut self.pc, self.$addr_reg)
                 }
                 AddressingMode::Absolute => memory.read_absolute(&mut self.pc),
-                AddressingMode::AbsoluteReg => memory.read_absolute_x_check_crossing(&mut self.pc, self.$addr_reg, &mut page_crossed),
+                AddressingMode::AbsoluteReg => memory.read_absolute_x_check_crossing(
+                    &mut self.pc,
+                    self.$addr_reg,
+                    &mut page_crossed,
+                ),
                 AddressingMode::IndirectX => memory.read_indirect_x(&mut self.pc, self.x),
-                AddressingMode::IndirectY => memory.read_indirect_y_check_crossing(&mut self.pc, self.y, &mut page_crossed),
-                _ => panic!("Unsupported addressing mode {:?}", $addr_mode)
+                AddressingMode::IndirectY => {
+                    memory.read_indirect_y_check_crossing(&mut self.pc, self.y, &mut page_crossed)
+                }
+                _ => panic!("Unsupported addressing mode {:?}", $addr_mode),
             };
 
             self.$reg_name = value;
@@ -803,12 +809,20 @@ macro_rules! st {
 
             match $addr_mode {
                 AddressingMode::ZeroPage => memory.write_zero_page(&mut self.pc, self.$reg_name),
-                AddressingMode::ZeroPageReg => memory.write_zero_page_x(&mut self.pc, self.$addr_reg, self.$reg_name),
+                AddressingMode::ZeroPageReg => {
+                    memory.write_zero_page_x(&mut self.pc, self.$addr_reg, self.$reg_name)
+                }
                 AddressingMode::Absolute => memory.write_absolute(&mut self.pc, self.$reg_name),
-                AddressingMode::AbsoluteReg => memory.write_absolute_x(&mut self.pc, self.$addr_reg, self.$reg_name),
-                AddressingMode::IndirectX => memory.write_indirect_x(&mut self.pc, self.x, self.$reg_name),
-                AddressingMode::IndirectY => memory.write_indirect_y(&mut self.pc, self.y, self.$reg_name),
-                _ => panic!("Unsupported addressing mode {:?}", $addr_mode)
+                AddressingMode::AbsoluteReg => {
+                    memory.write_absolute_x(&mut self.pc, self.$addr_reg, self.$reg_name)
+                }
+                AddressingMode::IndirectX => {
+                    memory.write_indirect_x(&mut self.pc, self.x, self.$reg_name)
+                }
+                AddressingMode::IndirectY => {
+                    memory.write_indirect_y(&mut self.pc, self.y, self.$reg_name)
+                }
+                _ => panic!("Unsupported addressing mode {:?}", $addr_mode),
             };
 
             self.cycles += cycles[$addr_mode];
@@ -918,16 +932,22 @@ macro_rules! logic {
                 AddressingMode::ZeroPage => memory.read_zero_page(&mut self.pc),
                 AddressingMode::ZeroPageReg => memory.read_zero_page_x(&mut self.pc, self.x),
                 AddressingMode::Absolute => memory.read_absolute(&mut self.pc),
-                AddressingMode::AbsoluteReg => memory.read_absolute_x_check_crossing(&mut self.pc, self.$reg_name, &mut page_crossed),
+                AddressingMode::AbsoluteReg => memory.read_absolute_x_check_crossing(
+                    &mut self.pc,
+                    self.$reg_name,
+                    &mut page_crossed,
+                ),
                 AddressingMode::IndirectX => memory.read_indirect_x(&mut self.pc, self.x),
-                AddressingMode::IndirectY => memory.read_indirect_y_check_crossing(&mut self.pc, self.y, &mut page_crossed),
-                _ => panic!("Unsupported addressing mode {:?}", $addr_mode)
+                AddressingMode::IndirectY => {
+                    memory.read_indirect_y_check_crossing(&mut self.pc, self.y, &mut page_crossed)
+                }
+                _ => panic!("Unsupported addressing mode {:?}", $addr_mode),
             };
 
             self.a = $op_func(value1, value2);
             self.test_number(self.a);
 
-            self.cycles += cycles[$addr_mode] + if page_crossed {1} else {0};
+            self.cycles += cycles[$addr_mode] + if page_crossed { 1 } else { 0 };
         }
     };
 }
@@ -1002,14 +1022,20 @@ macro_rules! arithmetic {
                 AddressingMode::ZeroPage => memory.read_zero_page(&mut self.pc),
                 AddressingMode::ZeroPageReg => memory.read_zero_page_x(&mut self.pc, self.x),
                 AddressingMode::Absolute => memory.read_absolute(&mut self.pc),
-                AddressingMode::AbsoluteReg => memory.read_absolute_x_check_crossing(&mut self.pc, self.$addr_reg, &mut page_crossed),
+                AddressingMode::AbsoluteReg => memory.read_absolute_x_check_crossing(
+                    &mut self.pc,
+                    self.$addr_reg,
+                    &mut page_crossed,
+                ),
                 AddressingMode::IndirectX => memory.read_indirect_x(&mut self.pc, self.x),
-                AddressingMode::IndirectY => memory.read_indirect_y_check_crossing(&mut self.pc, self.y, &mut page_crossed),
-                _ => panic!("Unsupported addressing mode {:?}", $addr_mode)
+                AddressingMode::IndirectY => {
+                    memory.read_indirect_y_check_crossing(&mut self.pc, self.y, &mut page_crossed)
+                }
+                _ => panic!("Unsupported addressing mode {:?}", $addr_mode),
             };
             let carry = self.get_carry();
 
-            self.cycles += cycles[$addr_mode] + if page_crossed {1} else {0};
+            self.cycles += cycles[$addr_mode] + if page_crossed { 1 } else { 0 };
             $arithm_func(self, value_reg, value_mem, carry);
         }
     };
@@ -1036,10 +1062,16 @@ macro_rules! cmp {
                 AddressingMode::ZeroPage => memory.read_zero_page(&mut self.pc),
                 AddressingMode::ZeroPageReg => memory.read_zero_page_x(&mut self.pc, self.x),
                 AddressingMode::Absolute => memory.read_absolute(&mut self.pc),
-                AddressingMode::AbsoluteReg => memory.read_absolute_x_check_crossing(&mut self.pc, self.$addr_reg, &mut page_crossed),
+                AddressingMode::AbsoluteReg => memory.read_absolute_x_check_crossing(
+                    &mut self.pc,
+                    self.$addr_reg,
+                    &mut page_crossed,
+                ),
                 AddressingMode::IndirectX => memory.read_indirect_x(&mut self.pc, self.x),
-                AddressingMode::IndirectY => memory.read_indirect_y_check_crossing(&mut self.pc, self.y, &mut page_crossed),
-                _ => panic!("Unsupported addressing mode {:?}", $addr_mode)
+                AddressingMode::IndirectY => {
+                    memory.read_indirect_y_check_crossing(&mut self.pc, self.y, &mut page_crossed)
+                }
+                _ => panic!("Unsupported addressing mode {:?}", $addr_mode),
             };
 
             let value = value_reg as i8 - value_mem as i8;
@@ -1048,7 +1080,7 @@ macro_rules! cmp {
             self.set_negative(value < 0);
             self.set_carry(value >= 0);
 
-            self.cycles += cycles[$addr_mode] + if page_crossed {1} else {0};
+            self.cycles += cycles[$addr_mode] + if page_crossed { 1 } else { 0 };
         }
     };
 }
@@ -1059,9 +1091,12 @@ impl CPU {
         cpu.a = value as u8;
         cpu.set_zero(value == 0);
         cpu.set_negative((value as i8) < 0);
-        let carry = ((((n1 & 0b1000_0000) >> 7) == 1u8) || (((n2 & 0b1000_0000) >> 7) == 1u8)) && ((value as u8 & 0b1000_0000) == 1u8);
+        let carry = ((((n1 & 0b1000_0000) >> 7) == 1u8) || (((n2 & 0b1000_0000) >> 7) == 1u8))
+            && ((value as u8 & 0b1000_0000) == 1u8);
         cpu.set_carry(carry);
-        cpu.set_overflow(value < 0 && n1 > 0 && n2 > 0 || value > 0 && (n1 as i8) < 0 && (n2 as i8) < 0);
+        cpu.set_overflow(
+            value < 0 && n1 > 0 && n2 > 0 || value > 0 && (n1 as i8) < 0 && (n2 as i8) < 0,
+        );
     }
 
     fn substraction(cpu: &mut CPU, n1: u8, n2: u8, c: bool) {
@@ -1069,9 +1104,13 @@ impl CPU {
         cpu.a = value as u8;
         cpu.set_zero(value == 0);
         cpu.set_negative((value as i8) < 0);
-        let carry = ((((n1 & 0b1000_0000) >> 7) == 1u8) || (((n2 & 0b1000_0000) >> 7) == 1u8)) && ((value as u8 & 0b1000_0000) != 1u8);
+        let carry = ((((n1 & 0b1000_0000) >> 7) == 1u8) || (((n2 & 0b1000_0000) >> 7) == 1u8))
+            && ((value as u8 & 0b1000_0000) != 1u8);
         cpu.set_carry(carry);
-        cpu.set_overflow((value as i8) > 0 && (n1 as i8) < 0 && (n2 as i8) > 0 || (value as i8) < 0 && (n1 as i8) > 0 && (n2 as i8) < 0);
+        cpu.set_overflow(
+            (value as i8) > 0 && (n1 as i8) < 0 && (n2 as i8) > 0
+                || (value as i8) < 0 && (n1 as i8) > 0 && (n2 as i8) < 0,
+        );
     }
 
     arithmetic! {adc_immediate, Self::addition, &AddressingMode::Immediate, x}
@@ -1158,7 +1197,6 @@ impl CPU {
     fn dey(&mut self, memory: &Memory) {
         todo!();
     }
-
 }
 
 #[cfg(test)]
@@ -1168,19 +1206,85 @@ mod tests {
     use super::*;
 
     fn assert_cpu(cpu: &CPU, cpu_copy: &CPU) {
-        assert_eq!(cpu.cycles, cpu_copy.cycles, "Amount of cycles used should be {}, but found {}", cpu_copy.cycles, cpu.cycles);
-        assert_eq!(cpu.a, cpu_copy.a, "Register a value should be {}, but found {}", cpu_copy.a, cpu.a);
-        assert_eq!(cpu.x, cpu_copy.x, "Register x value should be {}, but found {}", cpu_copy.x, cpu.x);
-        assert_eq!(cpu.y, cpu_copy.y, "Register y value should be {}, but found {}", cpu_copy.y, cpu.y);
-        assert_eq!(cpu.pc, cpu_copy.pc, "Program counter should be {}, but found {}", cpu_copy.pc, cpu.pc);
-        assert_eq!(cpu.sp, cpu_copy.sp, "Stack pointer value should be {}, but found {}", cpu_copy.sp, cpu.sp);
-        assert_eq!(cpu.get_carry(), cpu_copy.get_carry(), "Carry flag should be {}, but found {}!", cpu.get_carry(), cpu_copy.get_carry());
-        assert_eq!(cpu.get_zero(), cpu_copy.get_zero(), "Zero flag should be {}, but found {}!", cpu.get_zero(), cpu_copy.get_zero());
-        assert_eq!(cpu.get_interrupt_disable(), cpu_copy.get_interrupt_disable(), "Interrupt disable flag should be {}, but found {}!", cpu.get_interrupt_disable(), cpu_copy.get_interrupt_disable());
-        assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode(), "Decimal mode flag should be {}, but found {}!", cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-        assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command(), "Break command flag should be {}, but found {}!", cpu.get_break_command(), cpu_copy.get_break_command());
-        assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow(), "Overflow flag should be {}, but found {}!", cpu.get_overflow(), cpu_copy.get_overflow());
-        assert_eq!(cpu.get_negative(), cpu_copy.get_negative(), "Negative flag should be {}, but found {}!", cpu.get_negative(), cpu_copy.get_negative());
+        assert_eq!(
+            cpu.cycles, cpu_copy.cycles,
+            "Amount of cycles used should be {}, but found {}",
+            cpu_copy.cycles, cpu.cycles
+        );
+        assert_eq!(
+            cpu.a, cpu_copy.a,
+            "Register a value should be {}, but found {}",
+            cpu_copy.a, cpu.a
+        );
+        assert_eq!(
+            cpu.x, cpu_copy.x,
+            "Register x value should be {}, but found {}",
+            cpu_copy.x, cpu.x
+        );
+        assert_eq!(
+            cpu.y, cpu_copy.y,
+            "Register y value should be {}, but found {}",
+            cpu_copy.y, cpu.y
+        );
+        assert_eq!(
+            cpu.pc, cpu_copy.pc,
+            "Program counter should be {}, but found {}",
+            cpu_copy.pc, cpu.pc
+        );
+        assert_eq!(
+            cpu.sp, cpu_copy.sp,
+            "Stack pointer value should be {}, but found {}",
+            cpu_copy.sp, cpu.sp
+        );
+        assert_eq!(
+            cpu.get_carry(),
+            cpu_copy.get_carry(),
+            "Carry flag should be {}, but found {}!",
+            cpu.get_carry(),
+            cpu_copy.get_carry()
+        );
+        assert_eq!(
+            cpu.get_zero(),
+            cpu_copy.get_zero(),
+            "Zero flag should be {}, but found {}!",
+            cpu.get_zero(),
+            cpu_copy.get_zero()
+        );
+        assert_eq!(
+            cpu.get_interrupt_disable(),
+            cpu_copy.get_interrupt_disable(),
+            "Interrupt disable flag should be {}, but found {}!",
+            cpu.get_interrupt_disable(),
+            cpu_copy.get_interrupt_disable()
+        );
+        assert_eq!(
+            cpu.get_decimal_mode(),
+            cpu_copy.get_decimal_mode(),
+            "Decimal mode flag should be {}, but found {}!",
+            cpu.get_decimal_mode(),
+            cpu_copy.get_decimal_mode()
+        );
+        assert_eq!(
+            cpu.get_break_command(),
+            cpu_copy.get_break_command(),
+            "Break command flag should be {}, but found {}!",
+            cpu.get_break_command(),
+            cpu_copy.get_break_command()
+        );
+        assert_eq!(
+            cpu.get_overflow(),
+            cpu_copy.get_overflow(),
+            "Overflow flag should be {}, but found {}!",
+            cpu.get_overflow(),
+            cpu_copy.get_overflow()
+        );
+        assert_eq!(
+            cpu.get_negative(),
+            cpu_copy.get_negative(),
+            "Negative flag should be {}, but found {}!",
+            cpu.get_negative(),
+            cpu_copy.get_negative()
+        );
     }
 
     macro_rules! test_ld {
@@ -1299,7 +1403,7 @@ mod tests {
                                 additional_cycles[i as usize] += 1;
                             }
                         }
-                        _ => panic!("Unsupported addressing mode {:?}", $addr_mode)
+                        _ => panic!("Unsupported addressing mode {:?}", $addr_mode),
                     }
                 }
 
@@ -1760,8 +1864,8 @@ mod tests {
                             if addresses_absolute_final_y[i as usize] > 0xff {
                                 additional_cycles[i as usize] += 1;
                             }
-                        },
-                        _ => panic!("Unsupported addressing mode {:?}", $addr_mode)
+                        }
+                        _ => panic!("Unsupported addressing mode {:?}", $addr_mode),
                     }
                 }
 
@@ -1863,7 +1967,7 @@ mod tests {
                 let addresses_absolute_final_y = [0x0036u16, 0xfff4, 0xAC10, 0x00BA];
 
                 let values1 = [123u8, 53, 234, 10];
-                let values2 = [123u8, 69, 13,  255];
+                let values2 = [123u8, 69, 13, 255];
                 let values_res = [0u8, 246, 221, 11];
 
                 for i in 0..3 {
@@ -1932,8 +2036,8 @@ mod tests {
                             if addresses_absolute_final_y[i as usize] > 0xff {
                                 additional_cycles[i as usize] += 1;
                             }
-                        },
-                        _ => panic!("Unsupported addressing mode {:?}", $addr_mode)
+                        }
+                        _ => panic!("Unsupported addressing mode {:?}", $addr_mode),
                     }
                 }
 
@@ -1982,7 +2086,7 @@ mod tests {
 
     enum ArithmeticOperation {
         Addition,
-        Substraction
+        Substraction,
     }
 
     macro_rules! test_arithmetic {
@@ -2030,10 +2134,22 @@ mod tests {
                 let addresses_absolute_final_y = [0x0036u16, 0xfff4, 0xAC10, 0x00BA];
 
                 let overflow_flags = [true, false, true, false, true];
-                let values1 = [123u8, 152, 234, 10 , 128];
-                let values2 = [123u8, 167, 13,  255, 127];
-                let addition: [(u8, bool); 5] = [(247u8, false), (63, true), (248, false), (9, true), (0, true)];
-                let substraction: [(u8, bool); 5] = [(0u8, false), (240, false), (221, false), (10, false), (129, true)];
+                let values1 = [123u8, 152, 234, 10, 128];
+                let values2 = [123u8, 167, 13, 255, 127];
+                let addition: [(u8, bool); 5] = [
+                    (247u8, false),
+                    (63, true),
+                    (248, false),
+                    (9, true),
+                    (0, true),
+                ];
+                let substraction: [(u8, bool); 5] = [
+                    (0u8, false),
+                    (240, false),
+                    (221, false),
+                    (10, false),
+                    (129, true),
+                ];
 
                 let operation = match $op_type {
                     ArithmeticOperation::Addition => addition,
@@ -2106,8 +2222,8 @@ mod tests {
                             if addresses_absolute_final_y[i as usize] > 0xff {
                                 additional_cycles[i as usize] += 1;
                             }
-                        },
-                        _ => panic!("Unsupported addressing mode {:?}", $addr_mode)
+                        }
+                        _ => panic!("Unsupported addressing mode {:?}", $addr_mode),
                     }
                 }
 
@@ -2124,10 +2240,18 @@ mod tests {
                     cpu.set_carry(overflow_flags[i]);
 
                     cpu.execute(&mut memory, instruction);
-                    
+
                     let carry = match $op_type {
-                        ArithmeticOperation::Addition => ((((values1[i] & 0b1000_0000) >> 7) == 1u8) || (((values2[i] & 0b1000_0000) >> 7) == 1u8)) && ((value as u8 & 0b1000_0000) == 1u8),
-                        ArithmeticOperation::Substraction => ((((values1[i] & 0b1000_0000) >> 7) == 1u8) || (((values2[i] & 0b1000_0000) >> 7) == 1u8)) && ((value as u8 & 0b1000_0000) != 1u8),
+                        ArithmeticOperation::Addition => {
+                            ((((values1[i] & 0b1000_0000) >> 7) == 1u8)
+                                || (((values2[i] & 0b1000_0000) >> 7) == 1u8))
+                                && ((value as u8 & 0b1000_0000) == 1u8)
+                        }
+                        ArithmeticOperation::Substraction => {
+                            ((((values1[i] & 0b1000_0000) >> 7) == 1u8)
+                                || (((values2[i] & 0b1000_0000) >> 7) == 1u8))
+                                && ((value as u8 & 0b1000_0000) != 1u8)
+                        }
                     };
 
                     cpu_copy.cycles = cycles + cycles_increments[$addr_mode] + additional_cycles[i];
@@ -2169,7 +2293,9 @@ mod tests {
             #[test]
             fn $func_name() {
                 use std::collections::HashMap;
-                let mut cpu = CPU {..Default::default()};
+                let mut cpu = CPU {
+                    ..Default::default()
+                };
 
                 let mut memory = Memory {
                     ..Default::default()
@@ -2214,10 +2340,8 @@ mod tests {
                         AddressingMode::ZeroPageReg => {
                             memory.write(2 * i, u8::from($instr_name));
                             memory.write(2 * i + 1, addresses_zp[i as usize]);
-                            memory.write(
-                                addresses_zp_final_x[i as usize] as u16,
-                                values[i as usize],
-                            );
+                            memory
+                                .write(addresses_zp_final_x[i as usize] as u16, values[i as usize]);
                             addresses_final[i as usize] = addresses_zp_final_x[i as usize] as u16;
                         }
                         AddressingMode::Absolute => {
@@ -2229,10 +2353,11 @@ mod tests {
                         AddressingMode::AbsoluteReg => {
                             memory.write(3 * i, u8::from($instr_name));
                             memory.write(3 * i + 1, addresses_absolute[i as usize]);
-                            memory.write(addresses_absolute_final_x[i as usize], values[i as usize]);
+                            memory
+                                .write(addresses_absolute_final_x[i as usize], values[i as usize]);
                             addresses_final[i as usize] = addresses_absolute_final_x[i as usize];
                         }
-                        _ => panic!("Unsupported addressing mode {:?}", $addr_mode)
+                        _ => panic!("Unsupported addressing mode {:?}", $addr_mode),
                     }
                 }
 
@@ -2256,7 +2381,9 @@ mod tests {
 
                     cpu_copy.pc = pc + pc_increments[$addr_mode];
                     cpu_copy.cycles = cycles + cycles_increments[$addr_mode];
-                    if *$addr_mode == AddressingMode::ZeroPageReg || *$addr_mode == AddressingMode::AbsoluteReg {
+                    if *$addr_mode == AddressingMode::ZeroPageReg
+                        || *$addr_mode == AddressingMode::AbsoluteReg
+                    {
                         cpu_copy.x = x_values[i];
                     }
                     if $reg_type == Register::X {
@@ -2272,7 +2399,7 @@ mod tests {
                     }
                 }
             }
-        }
+        };
     }
 
     test_increments_decrements! {test_inc_zero_page, Instruction::INC_ZP, |n| n + 1, Register::None, &AddressingMode::ZeroPage}
