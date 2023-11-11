@@ -1224,7 +1224,7 @@ mod tests {
                 };
 
                 cpu.reset();
-                let cpu_copy = cpu.clone();
+                let mut cpu_copy = cpu.clone();
 
                 let mut pc_increments: HashMap<AddressingMode, u16> = HashMap::new();
                 pc_increments.insert(AddressingMode::ZeroPage, 2);
@@ -1325,20 +1325,14 @@ mod tests {
                     cpu.execute(&mut memory, instruction);
 
                     let actual_value: u8 = memory.read(address as u16);
-                    assert_eq!(actual_value, value);
 
-                    assert_eq!(cpu.pc, pc + pc_increments[$addr_mode]);
-                    assert_eq!(cpu.cycles, cycles + cycles_increments[$addr_mode]);
-                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
-                    assert_eq!(cpu.get_zero(), cpu_copy.get_zero());
-                    assert_eq!(
-                        cpu.get_interrupt_disable(),
-                        cpu_copy.get_interrupt_disable()
-                    );
-                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
-                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
-                    assert_eq!(cpu.get_negative(), cpu_copy.get_negative());
+                    assert_eq!(actual_value, value);
+                    cpu_copy.cycles = cycles + cycles_increments[$addr_mode];
+                    cpu_copy.pc = pc + pc_increments[$addr_mode];
+                    cpu_copy.x = x_values[i];
+                    cpu_copy.y = y_values[i];
+                    cpu_copy.$reg_name = value;
+                    assert_cpu(&cpu, &cpu_copy);
                 }
             }
         };
@@ -1374,7 +1368,7 @@ mod tests {
                 };
 
                 cpu.reset();
-                let cpu_copy = cpu.clone();
+                let mut cpu_copy = cpu.clone();
 
                 let values = [0u8, 69, (!105u8 + 1)];
 
@@ -1392,24 +1386,15 @@ mod tests {
 
                     cpu.execute(&mut memory, instruction);
 
-                    assert_eq!(cpu.$reg_dest, value);
-                    assert_eq!(cpu.pc, pc + 1);
-                    assert_eq!(cpu.cycles, cycles + 2);
-                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
-                    assert_eq!(
-                        cpu.get_interrupt_disable(),
-                        cpu_copy.get_interrupt_disable()
-                    );
-                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
-                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
+                    cpu_copy.cycles = cycles + 2;
+                    cpu_copy.pc = pc + 1;
+                    cpu_copy.$reg_src = value;
+                    cpu_copy.$reg_dest = value;
                     if $test_flags_en {
-                        assert_eq!(cpu.get_zero(), value == 0);
-                        assert_eq!(cpu.get_negative(), (value as i8) < 0);
-                    } else {
-                        assert_eq!(cpu.get_zero(), cpu_copy.get_zero());
-                        assert_eq!(cpu.get_negative(), cpu_copy.get_negative());
+                        cpu_copy.set_zero(value == 0);
+                        cpu_copy.set_negative((value as i8) < 0);
                     }
+                    assert_cpu(&cpu, &cpu_copy);
                 }
             }
         };
@@ -1436,6 +1421,8 @@ mod tests {
 
                 cpu.reset();
 
+                let mut cpu_copy = cpu.clone();
+
                 let values = [0u8, 69, (!105u8 + 1)];
 
                 for i in 0..3 {
@@ -1453,10 +1440,13 @@ mod tests {
                     cpu.execute(&mut memory, instruction);
 
                     let actual_value: u8 = memory.read(0x0100 + (cpu.sp - 1) as u16);
+
+                    cpu_copy.cycles = cycles + 3;
+                    cpu_copy.pc = pc + 1;
+                    cpu_copy.$reg_name = value;
+                    cpu_copy.sp = (i + 1) as u8;
+                    assert_cpu(&cpu, &cpu_copy);
                     assert_eq!(actual_value, value);
-                    assert_eq!(cpu.sp, (i + 1) as u8);
-                    assert_eq!(cpu.pc, pc + 1);
-                    assert_eq!(cpu.cycles, cycles + 3);
                 }
             }
         };
@@ -1482,7 +1472,8 @@ mod tests {
                     cpu.$reg_name = values[i as usize];
                     cpu.execute(&mut memory, $instr_push_name.into());
                 }
-                let cpu_copy = cpu.clone();
+                let mut cpu_copy = cpu.clone();
+                let sp_init = cpu_copy.sp;
 
                 for i in 0..3 {
                     let pc = cpu.pc;
@@ -1494,14 +1485,15 @@ mod tests {
 
                     cpu.execute(&mut memory, instruction);
 
-                    assert_eq!(cpu.$reg_name, value);
-                    assert_eq!(cpu.sp, (cpu_copy.sp - i as u8 - 1) as u8);
-                    assert_eq!(cpu.pc, pc + 1);
-                    assert_eq!(cpu.cycles, cycles + 4);
+                    cpu_copy.cycles = cycles + 4;
+                    cpu_copy.pc = pc + 1;
+                    cpu_copy.sp = sp_init - i as u8 - 1;
+                    cpu_copy.$reg_name = value;
                     if (u8::from(Instruction::PLA) == u8::from($instr_name)) {
-                        assert_eq!(cpu.get_zero(), value == 0);
-                        assert_eq!(cpu.get_negative(), (value as i8) < 0);
+                        cpu_copy.set_zero(value == 0);
+                        cpu_copy.set_negative((value as i8) < 0);
                     }
+                    assert_cpu(&cpu, &cpu_copy);
                 }
             }
         };
@@ -1526,7 +1518,7 @@ mod tests {
                 };
 
                 cpu.reset();
-                let cpu_copy = cpu.clone();
+                let mut cpu_copy = cpu.clone();
 
                 let mut pc_increments: HashMap<AddressingMode, u16> = HashMap::new();
                 pc_increments.insert(AddressingMode::Immediate, 2);
@@ -1644,22 +1636,14 @@ mod tests {
 
                     cpu.execute(&mut memory, instruction);
 
-                    assert_eq!(cpu.a, value);
-                    assert_eq!(cpu.pc, pc + pc_increments[$addr_mode]);
-                    assert_eq!(
-                        cpu.cycles,
-                        cycles + cycles_increments[$addr_mode] + additional_cycles[i]
-                    );
-                    assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
-                    assert_eq!(cpu.get_zero(), value == 0);
-                    assert_eq!(
-                        cpu.get_interrupt_disable(),
-                        cpu_copy.get_interrupt_disable()
-                    );
-                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
-                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
-                    assert_eq!(cpu.get_negative(), (value as i8) < 0);
+                    cpu_copy.cycles = cycles + cycles_increments[$addr_mode] + additional_cycles[i];
+                    cpu_copy.pc = pc + pc_increments[$addr_mode];
+                    cpu_copy.a = value;
+                    cpu_copy.x = x_values[i];
+                    cpu_copy.y = y_values[i];
+                    cpu_copy.set_zero(value == 0);
+                    cpu_copy.set_negative((value as i8) < 0);
+                    assert_cpu(&cpu, &cpu_copy);
                 }
             }
         };
@@ -1707,7 +1691,7 @@ mod tests {
                 };
 
                 cpu.reset();
-                let cpu_copy = cpu.clone();
+                let mut cpu_copy = cpu.clone();
 
                 let mut pc_increments: HashMap<AddressingMode, u16> = HashMap::new();
                 pc_increments.insert(AddressingMode::Immediate, 2);
@@ -1823,22 +1807,15 @@ mod tests {
 
                     cpu.execute(&mut memory, instruction);
 
-                    assert_eq!(cpu.pc, pc + pc_increments[$addr_mode]);
-                    assert_eq!(
-                        cpu.cycles,
-                        cycles + cycles_increments[$addr_mode] + additional_cycles[i]
-                    );
-                    assert_eq!(cpu.get_carry(), (value as i8) >= 0);
-                    assert_eq!(cpu.get_zero(), value == 0);
-                    assert_eq!(
-                        cpu.get_interrupt_disable(),
-                        cpu_copy.get_interrupt_disable()
-                    );
-                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
-                    assert_eq!(cpu.get_overflow(), cpu_copy.get_overflow());
-                    assert_eq!(cpu.get_negative(), (value as i8) < 0);
-
+                    cpu_copy.cycles = cycles + cycles_increments[$addr_mode] + additional_cycles[i];
+                    cpu_copy.pc = pc + pc_increments[$addr_mode];
+                    cpu_copy.x = x_values[i];
+                    cpu_copy.y = y_values[i];
+                    cpu_copy.$reg_name = values1[i];
+                    cpu_copy.set_carry((value as i8) >= 0);
+                    cpu_copy.set_zero(value == 0);
+                    cpu_copy.set_negative((value as i8) < 0);
+                    assert_cpu(&cpu, &cpu_copy);
                 }
             }
         };
@@ -1880,7 +1857,7 @@ mod tests {
                 };
 
                 cpu.reset();
-                let cpu_copy = cpu.clone();
+                let mut cpu_copy = cpu.clone();
 
                 let mut pc_increments: HashMap<AddressingMode, u16> = HashMap::new();
                 pc_increments.insert(AddressingMode::Immediate, 2);
@@ -2004,29 +1981,22 @@ mod tests {
                     cpu.set_carry(overflow_flags[i]);
 
                     cpu.execute(&mut memory, instruction);
-
-                    assert_eq!(cpu.a, value);
-                    assert_eq!(cpu.pc, pc + pc_increments[$addr_mode]);
-                    assert_eq!(
-                        cpu.cycles,
-                        cycles + cycles_increments[$addr_mode] + additional_cycles[i]
-                    );
-
+                    
                     let carry = match $op_type {
                         ArithmeticOperation::Addition => ((((values1[i] & 0b1000_0000) >> 7) == 1u8) || (((values2[i] & 0b1000_0000) >> 7) == 1u8)) && ((value as u8 & 0b1000_0000) == 1u8),
                         ArithmeticOperation::Substraction => ((((values1[i] & 0b1000_0000) >> 7) == 1u8) || (((values2[i] & 0b1000_0000) >> 7) == 1u8)) && ((value as u8 & 0b1000_0000) != 1u8),
                     };
 
-                    assert_eq!(cpu.get_carry(), carry);
-                    assert_eq!(cpu.get_zero(), value == 0);
-                    assert_eq!(
-                        cpu.get_interrupt_disable(),
-                        cpu_copy.get_interrupt_disable()
-                    );
-                    assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-                    assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
-                    assert_eq!(cpu.get_overflow(), operation[i].1);
-                    assert_eq!(cpu.get_negative(), (value as i8) < 0);
+                    cpu_copy.cycles = cycles + cycles_increments[$addr_mode] + additional_cycles[i];
+                    cpu_copy.pc = pc + pc_increments[$addr_mode];
+                    cpu_copy.x = x_values[i];
+                    cpu_copy.y = y_values[i];
+                    cpu_copy.a = value;
+                    cpu_copy.set_carry(carry);
+                    cpu_copy.set_zero(value == 0);
+                    cpu_copy.set_overflow(operation[i].1);
+                    cpu_copy.set_negative((value as i8) < 0);
+                    assert_cpu(&cpu, &cpu_copy);
                 }
             }
         };
@@ -2076,7 +2046,7 @@ mod tests {
             memory.write_byte(addresses[i as usize] as u16, values2[i as usize]);
         }
 
-        let cpu_copy = cpu.clone();
+        let mut cpu_copy = cpu.clone();
 
         for i in 0..3 {
             let pc = cpu.pc;
@@ -2087,18 +2057,13 @@ mod tests {
 
             cpu.execute(&mut memory, instruction);
 
-            assert_eq!(cpu.pc, pc + 2);
-            assert_eq!(cpu.cycles, cycles + 3);
-            assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
-            assert_eq!(cpu.get_zero(), zero_flags[i]);
-            assert_eq!(
-                cpu.get_interrupt_disable(),
-                cpu_copy.get_interrupt_disable()
-            );
-            assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-            assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
-            assert_eq!(cpu.get_overflow(), overflow_flags[i]);
-            assert_eq!(cpu.get_negative(), negative_flags[i]);
+            cpu_copy.cycles = cycles + 3;
+            cpu_copy.pc = pc + 2;
+            cpu_copy.a = values1[i];
+            cpu_copy.set_zero(zero_flags[i]);
+            cpu_copy.set_overflow(overflow_flags[i]);
+            cpu_copy.set_negative(negative_flags[i]);
+            assert_cpu(&cpu, &cpu_copy);
         }
     }
 
@@ -2126,7 +2091,7 @@ mod tests {
             memory.write_byte(addresses[i as usize] as u16, values2[i as usize]);
         }
 
-        let cpu_copy = cpu.clone();
+        let mut cpu_copy = cpu.clone();
 
         for i in 0..3 {
             let pc = cpu.pc;
@@ -2137,18 +2102,13 @@ mod tests {
 
             cpu.execute(&mut memory, instruction);
 
-            assert_eq!(cpu.pc, pc + 3);
-            assert_eq!(cpu.cycles, cycles + 4);
-            assert_eq!(cpu.get_carry(), cpu_copy.get_carry());
-            assert_eq!(cpu.get_zero(), zero_flags[i]);
-            assert_eq!(
-                cpu.get_interrupt_disable(),
-                cpu_copy.get_interrupt_disable()
-            );
-            assert_eq!(cpu.get_decimal_mode(), cpu_copy.get_decimal_mode());
-            assert_eq!(cpu.get_break_command(), cpu_copy.get_break_command());
-            assert_eq!(cpu.get_overflow(), overflow_flags[i]);
-            assert_eq!(cpu.get_negative(), negative_flags[i]);
+            cpu_copy.cycles = cycles + 4;
+            cpu_copy.pc = pc + 3;
+            cpu_copy.a = values1[i];
+            cpu_copy.set_zero(zero_flags[i]);
+            cpu_copy.set_overflow(overflow_flags[i]);
+            cpu_copy.set_negative(negative_flags[i]);
+            assert_cpu(&cpu, &cpu_copy);
         }
     }
 
