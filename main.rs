@@ -1149,10 +1149,64 @@ impl CPU {
     cmp! {cpy_absolute, y, &AddressingMode::Absolute, x}
 }
 
-impl CPU {
-    fn inc_zero_page(&mut self, memory: &mut Memory) {
-        todo!();
+macro_rules! inc_dec {
+    ($func_name: ident, $op_func: expr, $addr_mode: expr, $reg_type: expr) => {
+        fn $func_name(&mut self, memory: &mut Memory) {
+            match $reg_type {
+                Register::X => {
+                    self.x = $op_func(self.x);
+                    self.cycles += 2;
+                    self.test_number(self.x);
+                }
+                Register::Y => {
+                    self.y = $op_func(self.y);
+                    self.cycles += 2;
+                    self.test_number(self.y);
+                }
+                _ => {
+                    match $addr_mode {
+                        AddressingMode::ZeroPage => {
+                            let mut addr = self.pc;
+                            let value: u8 = memory.read_zero_page(&mut addr);
+                            let res = $op_func(value);
+                            memory.write_zero_page(&mut self.pc, res);
+                            self.cycles += 5;
+                            self.test_number(res);
+                        },
+                        AddressingMode::ZeroPageReg => {
+                            let mut addr = self.pc;
+                            let value: u8 = memory.read_zero_page_x(&mut addr, self.x);
+                            let res = $op_func(value);
+                            memory.write_zero_page_x(&mut self.pc, self.x, res);
+                            self.cycles += 6;
+                            self.test_number(res);
+                        },
+                        AddressingMode::Absolute => {
+                            let mut addr = self.pc;
+                            let value: u8 = memory.read_absolute(&mut addr);
+                            let res = $op_func(value);
+                            memory.write_absolute(&mut self.pc, res);
+                            self.cycles += 6;
+                            self.test_number(res);
+                        },
+                        AddressingMode::AbsoluteReg => {
+                            let mut addr = self.pc;
+                            let value: u8 = memory.read_absolute_x(&mut addr, self.x);
+                            let res = $op_func(value);
+                            memory.write_absolute_x(&mut self.pc, self.x, res);
+                            self.cycles += 7;
+                            self.test_number(res);
+                        },
+                        _ => panic!("Unsupported addressing mode {:?}", $addr_mode),
+                    }
+                }
+            }
+        }
     }
+}
+
+impl CPU {
+    inc_dec! {inc_zero_page, |n| n + 1, AddressingMode::ZeroPage, Register::None}
 
     fn inc_zero_page_x(&mut self, memory: &mut Memory) {
         todo!();
@@ -2381,11 +2435,8 @@ mod tests {
 
                     cpu_copy.pc = pc + pc_increments[$addr_mode];
                     cpu_copy.cycles = cycles + cycles_increments[$addr_mode];
-                    if *$addr_mode == AddressingMode::ZeroPageReg
-                        || *$addr_mode == AddressingMode::AbsoluteReg
-                    {
-                        cpu_copy.x = x_values[i];
-                    }
+                    cpu_copy.x = x_values[i];
+
                     if $reg_type == Register::X {
                         cpu_copy.x = value;
                     } else if $reg_type == Register::Y {
