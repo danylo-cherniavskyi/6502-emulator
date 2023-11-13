@@ -1154,103 +1154,69 @@ macro_rules! inc_dec {
         fn $func_name(&mut self, memory: &mut Memory) {
             match $reg_type {
                 Register::X => {
-                    self.x = $op_func(self.x);
+                    self.x = $op_func(self.x) as u8;
                     self.cycles += 2;
                     self.test_number(self.x);
                 }
                 Register::Y => {
-                    self.y = $op_func(self.y);
+                    self.y = $op_func(self.y) as u8;
                     self.cycles += 2;
                     self.test_number(self.y);
                 }
-                _ => {
-                    match $addr_mode {
-                        AddressingMode::ZeroPage => {
-                            let mut addr = self.pc;
-                            let value: u8 = memory.read_zero_page(&mut addr);
-                            let res = $op_func(value);
-                            memory.write_zero_page(&mut self.pc, res);
-                            self.cycles += 5;
-                            self.test_number(res);
-                        },
-                        AddressingMode::ZeroPageReg => {
-                            let mut addr = self.pc;
-                            let value: u8 = memory.read_zero_page_x(&mut addr, self.x);
-                            let res = $op_func(value);
-                            memory.write_zero_page_x(&mut self.pc, self.x, res);
-                            self.cycles += 6;
-                            self.test_number(res);
-                        },
-                        AddressingMode::Absolute => {
-                            let mut addr = self.pc;
-                            let value: u8 = memory.read_absolute(&mut addr);
-                            let res = $op_func(value);
-                            memory.write_absolute(&mut self.pc, res);
-                            self.cycles += 6;
-                            self.test_number(res);
-                        },
-                        AddressingMode::AbsoluteReg => {
-                            let mut addr = self.pc;
-                            let value: u8 = memory.read_absolute_x(&mut addr, self.x);
-                            let res = $op_func(value);
-                            memory.write_absolute_x(&mut self.pc, self.x, res);
-                            self.cycles += 7;
-                            self.test_number(res);
-                        },
-                        _ => panic!("Unsupported addressing mode {:?}", $addr_mode),
+                _ => match $addr_mode {
+                    AddressingMode::ZeroPage => {
+                        let mut addr = self.pc;
+                        let value: u8 = memory.read_zero_page(&mut addr);
+                        let res = $op_func(value) as u8;
+                        memory.write_zero_page(&mut self.pc, res);
+                        self.cycles += 5;
+                        self.test_number(res);
                     }
-                }
+                    AddressingMode::ZeroPageReg => {
+                        let mut addr = self.pc;
+                        let value: u8 = memory.read_zero_page_x(&mut addr, self.x);
+                        let res = $op_func(value) as u8;
+                        memory.write_zero_page_x(&mut self.pc, self.x, res);
+                        self.cycles += 6;
+                        self.test_number(res);
+                    }
+                    AddressingMode::Absolute => {
+                        let mut addr = self.pc;
+                        let value: u8 = memory.read_absolute(&mut addr);
+                        let res = $op_func(value) as u8;
+                        memory.write_absolute(&mut self.pc, res);
+                        self.cycles += 6;
+                        self.test_number(res);
+                    }
+                    AddressingMode::AbsoluteReg => {
+                        let mut addr = self.pc;
+                        let value: u8 = memory.read_absolute_x(&mut addr, self.x);
+                        let res = $op_func(value) as u8;
+                        memory.write_absolute_x(&mut self.pc, self.x, res);
+                        self.cycles += 7;
+                        self.test_number(res);
+                    }
+                    _ => panic!("Unsupported addressing mode {:?}", $addr_mode),
+                },
             }
         }
-    }
+    };
 }
 
 impl CPU {
     inc_dec! {inc_zero_page, |n| n + 1, AddressingMode::ZeroPage, Register::None}
+    inc_dec! {inc_zero_page_x, |n| n + 1, AddressingMode::ZeroPageReg, Register::None}
+    inc_dec! {inc_absolute, |n| n + 1, AddressingMode::Absolute, Register::None}
+    inc_dec! {inc_absolute_x, |n| n + 1, AddressingMode::AbsoluteReg, Register::None}
+    inc_dec! {inx, |n| n + 1, AddressingMode::Implied, Register::X}
+    inc_dec! {iny, |n| n + 1, AddressingMode::Implied, Register::Y}
 
-    fn inc_zero_page_x(&mut self, memory: &mut Memory) {
-        todo!();
-    }
-
-    fn inc_absolute(&mut self, memory: &mut Memory) {
-        todo!();
-    }
-
-    fn inc_absolute_x(&mut self, memory: &mut Memory) {
-        todo!();
-    }
-
-    fn inx(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn iny(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn dec_zero_page(&mut self, memory: &mut Memory) {
-        todo!();
-    }
-
-    fn dec_zero_page_x(&mut self, memory: &mut Memory) {
-        todo!();
-    }
-
-    fn dec_absolute(&mut self, memory: &mut Memory) {
-        todo!();
-    }
-
-    fn dec_absolute_x(&mut self, memory: &mut Memory) {
-        todo!();
-    }
-
-    fn dex(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn dey(&mut self, memory: &Memory) {
-        todo!();
-    }
+    inc_dec! {dec_zero_page, |n| n as i8 - 1, AddressingMode::ZeroPage, Register::None}
+    inc_dec! {dec_zero_page_x, |n| n as i8 - 1, AddressingMode::ZeroPageReg, Register::None}
+    inc_dec! {dec_absolute, |n| n as i8 - 1, AddressingMode::Absolute, Register::None}
+    inc_dec! {dec_absolute_x, |n| n as i8 - 1, AddressingMode::AbsoluteReg, Register::None}
+    inc_dec! {dex, |n| n as i8 - 1, AddressingMode::Implied, Register::X}
+    inc_dec! {dey, |n| n as i8 - 1, AddressingMode::Implied, Register::Y}
 }
 
 #[cfg(test)]
@@ -2416,7 +2382,7 @@ mod tests {
                 }
 
                 for i in 0..4 {
-                    let value = values_res[i];
+                    let value: u8 = values_res[i] as u8;
                     let pc = cpu.pc;
                     let cycles = cpu.cycles;
                     let instruction = cpu.fetch_instruction(&memory);
@@ -2435,7 +2401,10 @@ mod tests {
 
                     cpu_copy.pc = pc + pc_increments[$addr_mode];
                     cpu_copy.cycles = cycles + cycles_increments[$addr_mode];
-                    cpu_copy.x = x_values[i];
+
+                    if $reg_type == Register::None {
+                        cpu_copy.x = x_values[i];
+                    }
 
                     if $reg_type == Register::X {
                         cpu_copy.x = value;
@@ -2446,7 +2415,7 @@ mod tests {
                     cpu_copy.set_negative((value as i8) < 0);
                     assert_cpu(&cpu, &cpu_copy);
                     if $reg_type != Register::X && $reg_type != Register::Y {
-                        assert_eq!(res, values_res[i]);
+                        assert_eq!(res, values_res[i] as u8);
                     }
                 }
             }
@@ -2460,12 +2429,12 @@ mod tests {
     test_increments_decrements! {test_inx, Instruction::INX, |n| n + 1, Register::X, &AddressingMode::Implied}
     test_increments_decrements! {test_iny, Instruction::INY, |n| n + 1, Register::Y, &AddressingMode::Implied}
 
-    test_increments_decrements! {test_dec_zero_page, Instruction::DEC_ZP, |n| n - 1, Register::None, &AddressingMode::ZeroPage}
-    test_increments_decrements! {test_dec_zero_page_x, Instruction::DEC_ZP_X, |n| n - 1, Register::None, &AddressingMode::ZeroPageReg}
-    test_increments_decrements! {test_dec_absolute, Instruction::DEC_ABS, |n| n - 1, Register::None, &AddressingMode::Absolute}
-    test_increments_decrements! {test_dec_absolute_x, Instruction::DEC_ABS_X, |n| n - 1, Register::None, &AddressingMode::AbsoluteReg}
-    test_increments_decrements! {test_dex, Instruction::DEX, |n| n - 1, Register::X, &AddressingMode::Implied}
-    test_increments_decrements! {test_dey, Instruction::DEY, |n| n - 1, Register::Y, &AddressingMode::Implied}
+    test_increments_decrements! {test_dec_zero_page, Instruction::DEC_ZP, |n| n as i8 - 1, Register::None, &AddressingMode::ZeroPage}
+    test_increments_decrements! {test_dec_zero_page_x, Instruction::DEC_ZP_X, |n| n as i8 - 1, Register::None, &AddressingMode::ZeroPageReg}
+    test_increments_decrements! {test_dec_absolute, Instruction::DEC_ABS, |n| n as i8 - 1, Register::None, &AddressingMode::Absolute}
+    test_increments_decrements! {test_dec_absolute_x, Instruction::DEC_ABS_X, |n| n as i8 - 1, Register::None, &AddressingMode::AbsoluteReg}
+    test_increments_decrements! {test_dex, Instruction::DEX, |n| n as i8 - 1, Register::X, &AddressingMode::Implied}
+    test_increments_decrements! {test_dey, Instruction::DEY, |n| n as i8 - 1, Register::Y, &AddressingMode::Implied}
 
     #[test]
     fn test_bit_zero_page() {
