@@ -169,6 +169,35 @@ pub enum Instruction {
     // DECREMENT Y
     DEY,
 
+    // SHIFTS
+    // ARITHMETIC SHIFT LEFT
+    ASL_A,
+    ASL_ZP,
+    ASL_ZP_X,
+    ASL_ABS,
+    ASL_ABS_X,
+
+    // LOGICAL SHIFT RIGHT
+    LSR_A,
+    LSR_ZP,
+    LSR_ZP_X,
+    LSR_ABS,
+    LSR_ABS_X,
+
+    // ROTATE LEFT
+    ROL_A,
+    ROL_ZP,
+    ROL_ZP_X,
+    ROL_ABS,
+    ROL_ABS_X,
+
+    // ROTATE RIGHT
+    ROR_A,
+    ROR_ZP,
+    ROR_ZP_X,
+    ROR_ABS,
+    ROR_ABS_X,
+
     INVALID,
 }
 
@@ -311,6 +340,35 @@ impl From<u8> for Instruction {
             0xCA => Instruction::DEX,
             // DEY
             0x88 => Instruction::DEY,
+
+            // Shifts
+            // ASL
+            0x0A => Instruction::ASL_A,
+            0x06 => Instruction::ASL_ZP,
+            0x16 => Instruction::ASL_ZP_X,
+            0x0E => Instruction::ASL_ABS,
+            0x1E => Instruction::ASL_ABS_X,
+
+            // LSR
+            0x4A => Instruction::LSR_A,
+            0x46 => Instruction::LSR_ZP,
+            0x56 => Instruction::LSR_ZP_X,
+            0x4E => Instruction::LSR_ABS,
+            0x5E => Instruction::LSR_ABS_X,
+
+            // ROL
+            0x2A => Instruction::ROL_A,
+            0x26 => Instruction::ROL_ZP,
+            0x36 => Instruction::ROL_ZP_X,
+            0x2E => Instruction::ROL_ABS,
+            0x3E => Instruction::ROL_ABS_X,
+
+            // ROR
+            0x6A => Instruction::ROR_A,
+            0x66 => Instruction::ROR_ZP,
+            0x76 => Instruction::ROR_ZP_X,
+            0x6E => Instruction::ROR_ABS,
+            0x7E => Instruction::ROR_ABS_X,
 
             _ => Instruction::INVALID,
         }
@@ -457,6 +515,31 @@ impl From<Instruction> for u8 {
             Instruction::DEX => 0xCA,
             // DEY
             Instruction::DEY => 0x88,
+            // Shifts
+            // ASL
+            Instruction::ASL_A => 0x0A,
+            Instruction::ASL_ZP => 0x06,
+            Instruction::ASL_ZP_X => 0x16,
+            Instruction::ASL_ABS => 0x0E,
+            Instruction::ASL_ABS_X => 0x1E,
+            // LSR
+            Instruction::LSR_A => 0x4A,
+            Instruction::LSR_ZP => 0x46,
+            Instruction::LSR_ZP_X => 0x56,
+            Instruction::LSR_ABS => 0x4E,
+            Instruction::LSR_ABS_X => 0x5E,
+            // ROL
+            Instruction::ROL_A => 0x2A,
+            Instruction::ROL_ZP => 0x26,
+            Instruction::ROL_ZP_X => 0x36,
+            Instruction::ROL_ABS => 0x2E,
+            Instruction::ROL_ABS_X => 0x3E,
+            // ROR
+            Instruction::ROR_A => 0x6A,
+            Instruction::ROR_ZP => 0x66,
+            Instruction::ROR_ZP_X => 0x76,
+            Instruction::ROR_ABS => 0x6E,
+            Instruction::ROR_ABS_X => 0x7E,
 
             Instruction::INVALID => 0xFF,
         }
@@ -712,6 +795,31 @@ impl CPU {
             Instruction::DEX => self.dex(memory),
             // DEY
             Instruction::DEY => self.dey(memory),
+            // Shifts
+            // ASL
+            Instruction::ASL_A => self.asl_accumulator(memory),
+            Instruction::ASL_ZP => self.asl_zero_page(memory),
+            Instruction::ASL_ZP_X => self.asl_zero_page_x(memory),
+            Instruction::ASL_ABS => self.asl_absolute(memory),
+            Instruction::ASL_ABS_X => self.asl_absolute_x(memory),
+            // LSR
+            Instruction::LSR_A => self.lsr_accumulator(memory),
+            Instruction::LSR_ZP => self.lsr_zero_page(memory),
+            Instruction::LSR_ZP_X => self.lsr_zero_page_x(memory),
+            Instruction::LSR_ABS => self.lsr_absolute(memory),
+            Instruction::LSR_ABS_X => self.lsr_absolute_x(memory),
+            // ROL
+            Instruction::ROL_A => self.rol_accumulator(memory),
+            Instruction::ROL_ZP => self.rol_zero_page(memory),
+            Instruction::ROL_ZP_X => self.rol_zero_page_x(memory),
+            Instruction::ROL_ABS => self.rol_absolute(memory),
+            Instruction::ROL_ABS_X => self.rol_absolute_x(memory),
+            // ROR
+            Instruction::ROR_A => self.ror_accumulator(memory),
+            Instruction::ROR_ZP => self.ror_zero_page(memory),
+            Instruction::ROR_ZP_X => self.ror_zero_page_x(memory),
+            Instruction::ROR_ABS => self.ror_absolute(memory),
+            Instruction::ROR_ABS_X => self.ror_absolute_x(memory),
 
             Instruction::INVALID => println!("Error: Invalid instruction"),
         }
@@ -1217,6 +1325,88 @@ impl CPU {
     inc_dec! {dec_absolute_x, |n| n as i8 - 1, AddressingMode::AbsoluteReg, Register::None}
     inc_dec! {dex, |n| n as i8 - 1, AddressingMode::Implied, Register::X}
     inc_dec! {dey, |n| n as i8 - 1, AddressingMode::Implied, Register::Y}
+}
+
+impl CPU {
+    fn asl_accumulator(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn asl_zero_page(&mut self, memory: &mut Memory) {
+        todo!();
+    }
+
+    fn asl_zero_page_x(&mut self, memory: &mut Memory) {
+        todo!();
+    }
+
+    fn asl_absolute(&mut self, memory: &mut Memory) {
+        todo!();
+    }
+
+    fn asl_absolute_x(&mut self, memory: &mut Memory) {
+        todo!();
+    }
+
+    fn lsr_accumulator(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn lsr_zero_page(&mut self, memory: &mut Memory) {
+        todo!();
+    }
+
+    fn lsr_zero_page_x(&mut self, memory: &mut Memory) {
+        todo!();
+    }
+
+    fn lsr_absolute(&mut self, memory: &mut Memory) {
+        todo!();
+    }
+
+    fn lsr_absolute_x(&mut self, memory: &mut Memory) {
+        todo!();
+    }
+
+    fn rol_accumulator(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn rol_zero_page(&mut self, memory: &mut Memory) {
+        todo!();
+    }
+
+    fn rol_zero_page_x(&mut self, memory: &mut Memory) {
+        todo!();
+    }
+
+    fn rol_absolute(&mut self, memory: &mut Memory) {
+        todo!();
+    }
+
+    fn rol_absolute_x(&mut self, memory: &mut Memory) {
+        todo!();
+    }
+
+    fn ror_accumulator(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn ror_zero_page(&mut self, memory: &mut Memory) {
+        todo!();
+    }
+
+    fn ror_zero_page_x(&mut self, memory: &mut Memory) {
+        todo!();
+    }
+
+    fn ror_absolute(&mut self, memory: &mut Memory) {
+        todo!();
+    }
+
+    fn ror_absolute_x(&mut self, memory: &mut Memory) {
+        todo!();
+    }
 }
 
 #[cfg(test)]
