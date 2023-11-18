@@ -1327,86 +1327,90 @@ impl CPU {
     inc_dec! {dey, |n| n as i8 - 1, AddressingMode::Implied, Register::Y}
 }
 
+macro_rules! shifts {
+    ($func_name: ident, $op_func: expr, $addr_mode: expr) => {
+        fn $func_name(&mut self, memory: &mut Memory) {
+            use std::collections::HashMap;
+            let mut cycles: HashMap<AddressingMode, u64> = HashMap::new();
+            cycles.insert(AddressingMode::Implied, 2);
+            cycles.insert(AddressingMode::ZeroPage, 5);
+            cycles.insert(AddressingMode::ZeroPageReg, 6);
+            cycles.insert(AddressingMode::Absolute, 6);
+            cycles.insert(AddressingMode::AbsoluteReg, 7);
+
+            // copy pc because read_xxx and write_xxx increment pc
+            let mut pc = self.pc;
+            let value = match $addr_mode {
+                AddressingMode::Implied => self.a,
+                AddressingMode::ZeroPage => memory.read_zero_page(&mut pc),
+                AddressingMode::ZeroPageReg => memory.read_zero_page_x(&mut pc, self.x),
+                AddressingMode::Absolute => memory.read_absolute(&mut pc),
+                AddressingMode::AbsoluteReg => memory.read_absolute_x(&mut pc, self.x),
+                _ => panic!("Unsupported addressing mode {:?}", $addr_mode),
+            };
+
+            let (res, carry) = $op_func(value, self.get_carry());
+
+            match $addr_mode {
+                AddressingMode::Implied => self.a = res,
+                AddressingMode::ZeroPage => memory.write_zero_page(&mut self.pc, res),
+                AddressingMode::ZeroPageReg => memory.write_zero_page_x(&mut self.pc, self.x, res),
+                AddressingMode::Absolute => memory.write_absolute(&mut self.pc, res),
+                AddressingMode::AbsoluteReg => memory.write_absolute_x(&mut self.pc, self.x, res),
+                _ => panic!("Unsupported addressing mode {:?}", $addr_mode),
+            }
+
+            self.set_carry(carry);
+            self.test_number(res);
+            self.cycles += cycles[$addr_mode];
+        }
+    };
+}
+
+fn asl_func(n: u8, _carry: bool) -> (u8, bool) {
+    let bit7 = ((n & 0b1000_0000) >> 7) == 1;
+    (n << 1, bit7)
+}
+
+fn lsr_func(n: u8, _carry: bool) -> (u8, bool) {
+    let bit0 = (n & 0b0000_0001) == 1;
+    ((n >> 1), bit0)
+}
+
+fn rol_func(n: u8, carry: bool) -> (u8, bool) {
+    let bit7 = ((n & 0b1000_0000) >> 7) == 1;
+    ((n << 1) & carry as u8, bit7)
+}
+
+fn ror_func(n: u8, carry: bool) -> (u8, bool) {
+    let bit0 = (n & 0b0000_0001) == 1;
+    ((n >> 1) & (carry as u8) << 7, bit0)
+}
+
 impl CPU {
-    fn asl_accumulator(&mut self, memory: &Memory) {
-        todo!();
-    }
+    shifts! {asl_accumulator, asl_func, &AddressingMode::Implied}
+    shifts! {asl_zero_page, asl_func, &AddressingMode::ZeroPage}
+    shifts! {asl_zero_page_x, asl_func, &AddressingMode::ZeroPageReg}
+    shifts! {asl_absolute, asl_func, &AddressingMode::Absolute}
+    shifts! {asl_absolute_x, asl_func, &AddressingMode::AbsoluteReg}
 
-    fn asl_zero_page(&mut self, memory: &mut Memory) {
-        todo!();
-    }
+    shifts! {lsr_accumulator, lsr_func, &AddressingMode::Implied}
+    shifts! {lsr_zero_page, lsr_func, &AddressingMode::ZeroPage}
+    shifts! {lsr_zero_page_x, lsr_func, &AddressingMode::ZeroPageReg}
+    shifts! {lsr_absolute, lsr_func, &AddressingMode::Absolute}
+    shifts! {lsr_absolute_x, lsr_func, &AddressingMode::AbsoluteReg}
 
-    fn asl_zero_page_x(&mut self, memory: &mut Memory) {
-        todo!();
-    }
+    shifts! {rol_accumulator, rol_func, &AddressingMode::Implied}
+    shifts! {rol_zero_page, rol_func, &AddressingMode::ZeroPage}
+    shifts! {rol_zero_page_x, rol_func, &AddressingMode::ZeroPageReg}
+    shifts! {rol_absolute, rol_func, &AddressingMode::Absolute}
+    shifts! {rol_absolute_x, rol_func, &AddressingMode::AbsoluteReg}
 
-    fn asl_absolute(&mut self, memory: &mut Memory) {
-        todo!();
-    }
-
-    fn asl_absolute_x(&mut self, memory: &mut Memory) {
-        todo!();
-    }
-
-    fn lsr_accumulator(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn lsr_zero_page(&mut self, memory: &mut Memory) {
-        todo!();
-    }
-
-    fn lsr_zero_page_x(&mut self, memory: &mut Memory) {
-        todo!();
-    }
-
-    fn lsr_absolute(&mut self, memory: &mut Memory) {
-        todo!();
-    }
-
-    fn lsr_absolute_x(&mut self, memory: &mut Memory) {
-        todo!();
-    }
-
-    fn rol_accumulator(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn rol_zero_page(&mut self, memory: &mut Memory) {
-        todo!();
-    }
-
-    fn rol_zero_page_x(&mut self, memory: &mut Memory) {
-        todo!();
-    }
-
-    fn rol_absolute(&mut self, memory: &mut Memory) {
-        todo!();
-    }
-
-    fn rol_absolute_x(&mut self, memory: &mut Memory) {
-        todo!();
-    }
-
-    fn ror_accumulator(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn ror_zero_page(&mut self, memory: &mut Memory) {
-        todo!();
-    }
-
-    fn ror_zero_page_x(&mut self, memory: &mut Memory) {
-        todo!();
-    }
-
-    fn ror_absolute(&mut self, memory: &mut Memory) {
-        todo!();
-    }
-
-    fn ror_absolute_x(&mut self, memory: &mut Memory) {
-        todo!();
-    }
+    shifts! {ror_accumulator, ror_func, &AddressingMode::Implied}
+    shifts! {ror_zero_page, ror_func, &AddressingMode::ZeroPage}
+    shifts! {ror_zero_page_x, ror_func, &AddressingMode::ZeroPageReg}
+    shifts! {ror_absolute, ror_func, &AddressingMode::Absolute}
+    shifts! {ror_absolute_x, ror_func, &AddressingMode::AbsoluteReg}
 }
 
 #[cfg(test)]
@@ -2727,30 +2731,12 @@ mod tests {
 
                     let res: u8 = memory.read(addresses_final[i as usize]);
                     assert_cpu(&cpu, &cpu_copy);
-                    assert_eq!(res, value.0);
+                    if *$addr_mode != AddressingMode::Implied {
+                        assert_eq!(res, value.0);
+                    }
                 }
             }
         }
-    }
-
-    fn asl_func(n: u8, _carry: bool) -> (u8, bool) {
-        let bit7 = ((n & 0b1000_0000) >> 7) == 1;
-        (n << 1, bit7)
-    }
-
-    fn lsr_func(n: u8, _carry: bool) -> (u8, bool) {
-        let bit0 = (n & 0b0000_0001) == 1;
-        ((n >> 1), bit0)
-    }
-
-    fn rol_func(n: u8, carry: bool) -> (u8, bool) {
-        let bit7 = ((n & 0b1000_0000) >> 7) == 1;
-        ((n << 1) & carry as u8, bit7)
-    }
-
-    fn ror_func(n: u8, carry: bool) -> (u8, bool) {
-        let bit0 = (n & 0b0000_0001) == 1;
-        ((n >> 1) & (carry as u8) << 7, bit0)
     }
 
     test_shifts! {test_asl_accumulator, Instruction::ASL_A, asl_func, &AddressingMode::Implied}
