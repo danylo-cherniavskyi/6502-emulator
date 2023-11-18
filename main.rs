@@ -2734,8 +2734,23 @@ mod tests {
     }
 
     fn asl_func(n: u8, _carry: bool) -> (u8, bool) {
-        let bit7 = (n & 0b1000_0000 >> 7) == 1;
+        let bit7 = ((n & 0b1000_0000) >> 7) == 1;
         (n << 1, bit7)
+    }
+
+    fn lsr_func(n: u8, _carry: bool) -> (u8, bool) {
+        let bit0 = (n & 0b0000_0001) == 1;
+        ((n >> 1), bit0)
+    }
+
+    fn rol_func(n: u8, carry: bool) -> (u8, bool) {
+        let bit7 = ((n & 0b1000_0000) >> 7) == 1;
+        ((n << 1) & carry as u8, bit7)
+    }
+
+    fn ror_func(n: u8, carry: bool) -> (u8, bool) {
+        let bit0 = (n & 0b0000_0001) == 1;
+        ((n >> 1) & (carry as u8) << 7, bit0)
     }
 
     test_shifts! {test_asl_accumulator, Instruction::ASL_A, asl_func, &AddressingMode::Implied}
@@ -2743,6 +2758,24 @@ mod tests {
     test_shifts! {test_asl_zero_page_x, Instruction::ASL_ZP_X, asl_func, &AddressingMode::ZeroPageReg}
     test_shifts! {test_asl_absolute, Instruction::ASL_ABS, asl_func, &AddressingMode::Absolute}
     test_shifts! {test_asl_absolute_x, Instruction::ASL_ABS_X, asl_func, &AddressingMode::AbsoluteReg}
+
+    test_shifts! {test_lsr_accumulator, Instruction::LSR_A, lsr_func, &AddressingMode::Implied}
+    test_shifts! {test_lsr_zero_page, Instruction::LSR_ZP, lsr_func, &AddressingMode::ZeroPage}
+    test_shifts! {test_lsr_zero_page_x, Instruction::LSR_ZP_X, lsr_func, &AddressingMode::ZeroPageReg}
+    test_shifts! {test_lsr_absolute, Instruction::LSR_ABS, lsr_func, &AddressingMode::Absolute}
+    test_shifts! {test_lsr_absolute_x, Instruction::LSR_ABS_X, lsr_func, &AddressingMode::AbsoluteReg}
+
+    test_shifts! {test_rol_accumulator, Instruction::ROL_A, rol_func, &AddressingMode::Implied}
+    test_shifts! {test_rol_zero_page, Instruction::ROL_ZP, rol_func, &AddressingMode::ZeroPage}
+    test_shifts! {test_rol_zero_page_x, Instruction::ROL_ZP_X, rol_func, &AddressingMode::ZeroPageReg}
+    test_shifts! {test_rol_absolute, Instruction::ROL_ABS, rol_func, &AddressingMode::Absolute}
+    test_shifts! {test_rol_absolute_x, Instruction::ROL_ABS_X, rol_func, &AddressingMode::AbsoluteReg}
+
+    test_shifts! {test_ror_accumulator, Instruction::ROR_A, ror_func, &AddressingMode::Implied}
+    test_shifts! {test_ror_zero_page, Instruction::ROR_ZP, ror_func, &AddressingMode::ZeroPage}
+    test_shifts! {test_ror_zero_page_x, Instruction::ROR_ZP_X, ror_func, &AddressingMode::ZeroPageReg}
+    test_shifts! {test_ror_absolute, Instruction::ROR_ABS, ror_func, &AddressingMode::Absolute}
+    test_shifts! {test_ror_absolute_x, Instruction::ROR_ABS_X, ror_func, &AddressingMode::AbsoluteReg}
 
     #[test]
     fn test_bit_zero_page() {
