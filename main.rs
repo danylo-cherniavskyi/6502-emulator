@@ -198,6 +198,12 @@ pub enum Instruction {
     ROR_ABS,
     ROR_ABS_X,
 
+    // JUMPS AND CALLS
+    JMP_ABS,
+    JMP_IN,
+    JSR_ABS,
+    RTS_IM,
+
     INVALID,
 }
 
@@ -370,6 +376,12 @@ impl From<u8> for Instruction {
             0x6E => Instruction::ROR_ABS,
             0x7E => Instruction::ROR_ABS_X,
 
+            // Jumps and Calls
+            0x4C => Instruction::JMP_ABS,
+            0x6C => Instruction::JMP_IN,
+            0x20 => Instruction::JSR_ABS,
+            0x60 => Instruction::RTS_IM,
+
             _ => Instruction::INVALID,
         }
     }
@@ -540,6 +552,11 @@ impl From<Instruction> for u8 {
             Instruction::ROR_ZP_X => 0x76,
             Instruction::ROR_ABS => 0x6E,
             Instruction::ROR_ABS_X => 0x7E,
+            // Jumps and Calls
+            Instruction::JMP_ABS => 0x4C,
+            Instruction::JMP_IN => 0x6C,
+            Instruction::JSR_ABS => 0x20,
+            Instruction::RTS_IM => 0x60,
 
             Instruction::INVALID => 0xFF,
         }
@@ -820,6 +837,12 @@ impl CPU {
             Instruction::ROR_ZP_X => self.ror_zero_page_x(memory),
             Instruction::ROR_ABS => self.ror_absolute(memory),
             Instruction::ROR_ABS_X => self.ror_absolute_x(memory),
+            // Jumps and Calls
+            Instruction::JMP_ABS => self.jmp_absolute(memory),
+            Instruction::JMP_IN => self.jmp_indirect(memory),
+            Instruction::JSR_ABS => self.jsr_absolute(memory),
+            Instruction::RTS_IM => self.rts_implied(memory),
+            
 
             Instruction::INVALID => println!("Error: Invalid instruction"),
         }
@@ -1411,6 +1434,24 @@ impl CPU {
     shifts! {ror_zero_page_x, ror_func, &AddressingMode::ZeroPageReg}
     shifts! {ror_absolute, ror_func, &AddressingMode::Absolute}
     shifts! {ror_absolute_x, ror_func, &AddressingMode::AbsoluteReg}
+}
+
+impl CPU {
+    fn jmp_absolute(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn jmp_indirect(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn jsr_absolute(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn rts_implied(&mut self, memory: &Memory) {
+        todo!();
+    }
 }
 
 #[cfg(test)]
