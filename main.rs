@@ -2626,6 +2626,118 @@ mod tests {
     test_increments_decrements! {test_dex, Instruction::DEX, |n| n as i8 - 1, Register::X, &AddressingMode::Implied}
     test_increments_decrements! {test_dey, Instruction::DEY, |n| n as i8 - 1, Register::Y, &AddressingMode::Implied}
 
+    macro_rules! test_shifts {
+        ($func_name: ident, $instr_name: expr, $op_func: expr, $addr_mode: expr) => {
+            #[test]
+            fn $func_name() {
+                use std::collections::HashMap;
+                let mut cpu = CPU {
+                    ..Default::default()
+                };
+
+                let mut memory = Memory {
+                    ..Default::default()
+                };
+
+                let mut pc_increments: HashMap<AddressingMode, u16> = HashMap::new();
+                pc_increments.insert(AddressingMode::Implied, 1);
+                pc_increments.insert(AddressingMode::ZeroPage, 2);
+                pc_increments.insert(AddressingMode::ZeroPageReg, 2);
+                pc_increments.insert(AddressingMode::Absolute, 3);
+                pc_increments.insert(AddressingMode::AbsoluteReg, 3);
+
+                let mut cycles_increments: HashMap<AddressingMode, u64> = HashMap::new();
+                cycles_increments.insert(AddressingMode::Implied, 2);
+                cycles_increments.insert(AddressingMode::ZeroPage, 5);
+                cycles_increments.insert(AddressingMode::ZeroPageReg, 6);
+                cycles_increments.insert(AddressingMode::Absolute, 6);
+                cycles_increments.insert(AddressingMode::AbsoluteReg, 7);
+
+                cpu.reset();
+                let mut cpu_copy = cpu.clone();
+
+                let carries = [true, false, true, false];
+                let values = [69, 0, 234, 1];
+                let addresses_zp = [0x13u8, 0x69, 0xFF, 0xAB];
+                let x_values = [0x10, 0x00u8, 0x16, 0x4A];
+                let addresses_zp_final_x = [0x23u8, 0x69, 0x15, 0xF5];
+                let addresses_absolute = [0x0013u16, 0xfff4, 0xABCD, 0xffff];
+                let addresses_absolute_final_x = [0x0023u16, 0xfff4, 0xABE3, 0x0049];
+                let mut addresses_final = [0, 0, 0, 0];
+
+                let values_res: Vec<(u8, bool)> = zip(values, carries).map(|value_and_carry| $op_func(value_and_carry.0, value_and_carry.1)).collect();
+
+                for i in 0..3 {
+                    match $addr_mode {
+                        AddressingMode::Implied => memory.write(i, u8::from($instr_name)),
+                        AddressingMode::ZeroPage => {
+                            memory.write(2 * i, u8::from($instr_name));
+                            memory.write(2 * i + 1, addresses_zp[i as usize]);
+                            memory.write(addresses_zp[i as usize] as u16, values[i as usize]);
+                            addresses_final[i as usize] = addresses_zp[i as usize] as u16;
+                        }
+                        AddressingMode::ZeroPageReg => {
+                            memory.write(2 * i, u8::from($instr_name));
+                            memory.write(2 * i + 1, addresses_zp[i as usize]);
+                            memory
+                                .write(addresses_zp_final_x[i as usize] as u16, values[i as usize]);
+                            addresses_final[i as usize] = addresses_zp_final_x[i as usize] as u16;
+                        }
+                        AddressingMode::Absolute => {
+                            memory.write(3 * i, u8::from($instr_name));
+                            memory.write(3 * i + 1, addresses_absolute[i as usize]);
+                            memory.write(addresses_absolute[i as usize], values[i as usize]);
+                            addresses_final[i as usize] = addresses_absolute[i as usize];
+                        }
+                        AddressingMode::AbsoluteReg => {
+                            memory.write(3 * i, u8::from($instr_name));
+                            memory.write(3 * i + 1, addresses_absolute[i as usize]);
+                            memory
+                                .write(addresses_absolute_final_x[i as usize], values[i as usize]);
+                            addresses_final[i as usize] = addresses_absolute_final_x[i as usize];
+                        }
+                        _ => panic!("Unsupported addressing mode {:?}", $addr_mode),
+                    }
+                }
+
+                for i in 0..3 {
+                    let value: (u8, bool) = values_res[i];
+                    let pc = cpu.pc;
+                    let cycles = cpu.cycles;
+                    let instruction = cpu.fetch_instruction(&memory);
+
+                    if *$addr_mode == AddressingMode::Implied {
+                        cpu.a = values[i];
+                        cpu_copy.a = value.0;
+                    }
+
+                    if *$addr_mode == AddressingMode::ZeroPageReg || 
+                       *$addr_mode == AddressingMode::AbsoluteReg {
+                        cpu.x = x_values[i];
+                        cpu_copy.x = x_values[i];
+                    }
+
+                    cpu.execute(&mut memory, instruction);
+
+                    cpu_copy.pc = pc + pc_increments[$addr_mode];
+                    cpu_copy.cycles = cycles + cycles_increments[$addr_mode];
+                    cpu_copy.set_zero(value.0 == 0);
+                    cpu_copy.set_negative((value.0 as i8) < 0);
+                    cpu_copy.set_carry(value.1);
+
+                    let res: u8 = memory.read(addresses_final[i as usize]);
+                    assert_cpu(&cpu, &cpu_copy);
+                    assert_eq!(res, value.0);
+                }
+            }
+        }
+    }
+
+    test_shifts! {test_asl_accumulator, Instruction::ASL_A, |n, carry| {
+        let bit7 = (n & 0b1000_0000 >> 7) == 1;
+        return (n << 1, bit7);
+    }, &AddressingMode::Implied}
+
     #[test]
     fn test_bit_zero_page() {
         let mut cpu = CPU {
