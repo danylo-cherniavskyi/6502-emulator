@@ -20,6 +20,7 @@ pub mod memory {
         ZeroPageReg,
         Absolute,
         AbsoluteReg,
+        Indirect,
         IndirectX,
         IndirectY,
     }

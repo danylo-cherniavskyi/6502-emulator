@@ -2804,6 +2804,62 @@ mod tests {
     test_shifts! {test_ror_absolute, Instruction::ROR_ABS, ror_func, &AddressingMode::Absolute}
     test_shifts! {test_ror_absolute_x, Instruction::ROR_ABS_X, ror_func, &AddressingMode::AbsoluteReg}
 
+    macro_rules! test_jmp {
+        ($func_name: ident, $instr_name: expr, $addr_mode: expr) => {
+            #[test]
+            fn $func_name() {
+                use std::collections::HashMap;
+                if (*$addr_mode != AddressingMode::Indirect && *$addr_mode != AddressingMode::Absolute) {
+                    panic!("Unsupported addressing mode {:?}", $addr_mode);
+                }
+
+                let mut cpu = CPU {
+                    ..Default::default()
+                };
+        
+                let mut memory = Memory {
+                    ..Default::default()
+                };
+
+                cpu.reset();
+                let mut cpu_copy = cpu.clone();
+
+                let mut cycles_increments: HashMap<AddressingMode, u64> = HashMap::new();
+                cycles_increments.insert(AddressingMode::Absolute, 3);
+                cycles_increments.insert(AddressingMode::Indirect, 5);
+
+                let addresses = [0x1234, 0x4321, 0xABCD, 0x6942];
+                let addresses_indirect = [0x2233, 0x3454, 0x6547, 0xBE43];
+                let mut addresses_final = [0, 0, 0, 0];
+
+                for i in 0..3 {
+                    memory.write(3*i, u8::from($instr_name));
+                    memory.write(3*i + 1, addresses[i as usize]);
+                    addresses_final[i as usize] = addresses[i as usize];
+                    if *$addr_mode == AddressingMode::Indirect {
+                        memory.write(addresses[i as usize], addresses_indirect[i as usize]);
+                        addresses_final[i as usize] = addresses_indirect[i as usize];
+                    }
+                }
+
+                for i in 0..3 {
+                    let cycles = cpu.cycles;
+                    let instruction = cpu.fetch_instruction(&memory);
+
+                    cpu.execute(&mut memory, instruction);
+
+                    cpu_copy.pc = addresses_final[i];
+                    cpu_copy.cycles = cycles + cycles_increments[$addr_mode];
+
+                    assert_cpu(&cpu, &cpu_copy);
+                }
+            }
+        };
+    }
+
+    test_jmp! {test_jmp_absolute, Instruction::JMP_ABS, &AddressingMode::Absolute}
+    test_jmp! {test_jmp_indirect, Instruction::JMP_IN, &AddressingMode::Indirect}
+
     #[test]
     fn test_bit_zero_page() {
         let mut cpu = CPU {
