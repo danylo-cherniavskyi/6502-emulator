@@ -2733,10 +2733,16 @@ mod tests {
         }
     }
 
-    test_shifts! {test_asl_accumulator, Instruction::ASL_A, |n, carry| {
+    fn asl_func(n: u8, _carry: bool) -> (u8, bool) {
         let bit7 = (n & 0b1000_0000 >> 7) == 1;
-        return (n << 1, bit7);
-    }, &AddressingMode::Implied}
+        (n << 1, bit7)
+    }
+
+    test_shifts! {test_asl_accumulator, Instruction::ASL_A, asl_func, &AddressingMode::Implied}
+    test_shifts! {test_asl_zero_page, Instruction::ASL_ZP, asl_func, &AddressingMode::ZeroPage}
+    test_shifts! {test_asl_zero_page_x, Instruction::ASL_ZP_X, asl_func, &AddressingMode::ZeroPageReg}
+    test_shifts! {test_asl_absolute, Instruction::ASL_ABS, asl_func, &AddressingMode::Absolute}
+    test_shifts! {test_asl_absolute_x, Instruction::ASL_ABS_X, asl_func, &AddressingMode::AbsoluteReg}
 
     #[test]
     fn test_bit_zero_page() {
