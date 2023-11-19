@@ -3033,6 +3033,75 @@ mod tests {
         }
     }
 
+    macro_rules! test_branches {
+        ($func_name: ident, $instr_name: expr) => {
+            #[test]
+            fn $func_name() {
+                let mut cpu = CPU {
+                    ..Default::default()
+                };
+
+                let mut memory = Memory {
+                    ..Default::default()
+                };
+
+                cpu.reset();
+                let mut cpu_copy = cpu.clone();
+
+                let branch_addresses = [0xff, 0x00, 0xAB, 0x98];
+                let mut additional_cycles = [0, 0, 0, 0];
+
+                for i in 0..4 {
+                    memory.write(2*i, u8::from($instr_name));
+                    memory.write(2*i + 1, branch_addresses[i as usize]);
+
+                    additional_cycles[i as usize] = ((2 * i + branch_addresses[i as usize]) > 0xff) as u64;
+                }
+
+                for i in 0..8 {
+                    let instruction = cpu.fetch_instruction(&memory);
+                    let pc = cpu.pc;
+
+                    cpu.set_carry(i % 2 == 1);
+                    cpu.set_negative(i % 2 == 1);
+                    cpu.set_zero(i % 2 == 1);
+                    cpu.set_overflow(i % 2 == 1);
+
+                    cpu.execute(&mut memory, instruction);
+
+                    cpu_copy.pc = match i % 2 {
+                        0 => pc + 1,
+                        1 => pc + branch_addresses[(i / 2) as usize],
+                        _ => panic!("unreachable"),
+                    };
+
+                    cpu_copy.cycles += match i % 2 {
+                        0 => 2,
+                        1 => 3 + additional_cycles[(i / 2) as usize],
+                        _ => panic!("unreachable"),
+                    };
+
+                    cpu_copy.set_carry(i % 2 == 1);
+                    cpu_copy.set_negative(i % 2 == 1);
+                    cpu_copy.set_zero(i % 2 == 1);
+                    cpu_copy.set_overflow(i % 2 == 1);
+
+                    assert_cpu(&cpu, &cpu_copy);
+                }
+
+            }
+        };
+    }
+
+    test_branches! {test_bcc, Instruction::BCC}
+    test_branches! {test_bcs, Instruction::BCS}
+    test_branches! {test_beq, Instruction::BEQ}
+    test_branches! {test_bmi, Instruction::BMI}
+    test_branches! {test_bne, Instruction::BNE}
+    test_branches! {test_bpl, Instruction::BPL}
+    test_branches! {test_bvc, Instruction::BVC}
+    test_branches! {test_bvs, Instruction::BVS}
+
     #[test]
     fn test_bit_zero_page() {
         let mut cpu = CPU {
