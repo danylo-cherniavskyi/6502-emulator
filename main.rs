@@ -3336,6 +3336,45 @@ mod tests {
     }
 
     #[test]
+    fn test_rti() {
+        let mut cpu = CPU {
+            ..Default::default()
+        };
+
+        let mut memory = Memory {
+            ..Default::default()
+        };
+
+        cpu.reset();
+        let mut cpu_copy = cpu.clone();
+        let stack_pc: u16 = 0x1234;
+        let stack_processor_status_flags = [false, true, false, true, false, true, false];
+        let stack_processor_status = 0b0010_1010u8;
+        let sp: u16 = 0xff - 3;
+
+        memory.write(0, u8::from(Instruction::RTI));
+        memory.write(0x100u16 + sp as u16, stack_processor_status);
+        memory.write(0x100u16 + sp as u16 + 1, stack_pc);
+
+        let instruction = cpu.fetch_instruction(&memory);
+
+        cpu.execute(&mut memory, instruction);
+
+        cpu_copy.pc = stack_pc;
+        cpu_copy.cycles = 6;
+        cpu_copy.set_carry(stack_processor_status_flags[0]);
+        cpu_copy.set_zero(stack_processor_status_flags[1]);
+        cpu_copy.set_interrupt_disable(stack_processor_status_flags[2]);
+        cpu_copy.set_decimal_mode(stack_processor_status_flags[3]);
+        cpu_copy.set_break_command(stack_processor_status_flags[4]);
+        cpu_copy.set_overflow(stack_processor_status_flags[5]);
+        cpu_copy.set_negative(stack_processor_status_flags[6]);
+        cpu_copy.sp = 0xff;
+
+        assert_cpu(&cpu, &cpu_copy);
+    }
+
+    #[test]
     fn test_bit_zero_page() {
         let mut cpu = CPU {
             ..Default::default()
