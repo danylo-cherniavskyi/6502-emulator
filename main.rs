@@ -204,6 +204,16 @@ pub enum Instruction {
     JSR_ABS,
     RTS_IM,
 
+    // BRANCHES
+    BCC,
+    BCS,
+    BEQ,
+    BMI,
+    BNE,
+    BPL,
+    BVC,
+    BVS,
+
     INVALID,
 }
 
@@ -381,6 +391,15 @@ impl From<u8> for Instruction {
             0x6C => Instruction::JMP_IN,
             0x20 => Instruction::JSR_ABS,
             0x60 => Instruction::RTS_IM,
+            // Branches
+            0x90 => Instruction::BCC,
+            0xB0 => Instruction::BCS,
+            0xF0 => Instruction::BEQ,
+            0x30 => Instruction::BMI,
+            0xD0 => Instruction::BNE,
+            0x10 => Instruction::BPL,
+            0x50 => Instruction::BVC,
+            0x70 => Instruction::BVS,
 
             _ => Instruction::INVALID,
         }
@@ -557,6 +576,15 @@ impl From<Instruction> for u8 {
             Instruction::JMP_IN => 0x6C,
             Instruction::JSR_ABS => 0x20,
             Instruction::RTS_IM => 0x60,
+            // Branches
+            Instruction::BCC => 0x90,
+            Instruction::BCS => 0xB0,
+            Instruction::BEQ => 0xF0,
+            Instruction::BMI => 0x30,
+            Instruction::BNE => 0xD0,
+            Instruction::BPL => 0x10,
+            Instruction::BVC => 0x50,
+            Instruction::BVS => 0x70,
 
             Instruction::INVALID => 0xFF,
         }
@@ -842,7 +870,15 @@ impl CPU {
             Instruction::JMP_IN => self.jmp_indirect(memory),
             Instruction::JSR_ABS => self.jsr_absolute(memory),
             Instruction::RTS_IM => self.rts_implied(memory),
-            
+            // Branches
+            Instruction::BCC => self.bcc(memory),
+            Instruction::BCS => self.bcs(memory),
+            Instruction::BEQ => self.beq(memory),
+            Instruction::BMI => self.bmi(memory),
+            Instruction::BNE => self.bne(memory),
+            Instruction::BPL => self.bpl(memory),
+            Instruction::BVC => self.bvc(memory),
+            Instruction::BVS => self.bvs(memory),
 
             Instruction::INVALID => println!("Error: Invalid instruction"),
         }
@@ -1476,6 +1512,40 @@ impl CPU {
         self.pc = dest;
         self.pc += 1;
         self.cycles += 6;
+    }
+}
+
+impl CPU {
+    fn bcc(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn bcs(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn beq(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn bmi(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn bne(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn bpl(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn bvc(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn bvs(&mut self, memory: &Memory) {
+        todo!();
     }
 }
 
