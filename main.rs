@@ -1515,38 +1515,31 @@ impl CPU {
     }
 }
 
+macro_rules! branches {
+    ($func_name: ident, $cpu_flag_val: ident, $is_set: expr) => {
+        fn $func_name(&mut self, memory: &Memory) {
+            let offset: u8 = memory.read(self.pc);
+            if self.$cpu_flag_val() == $is_set {
+                self.cycles += (self.pc + offset as u16 > 0xff) as u64;
+                self.pc += offset as u16;
+                self.cycles += 3;
+            } else {
+                self.pc += 1;
+                self.cycles += 2;
+            }
+        }
+    };
+}
+
 impl CPU {
-    fn bcc(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn bcs(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn beq(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn bmi(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn bne(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn bpl(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn bvc(&mut self, memory: &Memory) {
-        todo!();
-    }
-
-    fn bvs(&mut self, memory: &Memory) {
-        todo!();
-    }
+    branches! {bcc, get_carry, false}
+    branches! {bcs, get_carry, true}
+    branches! {beq, get_zero, true}
+    branches! {bne, get_zero, false}
+    branches! {bmi, get_negative, true}
+    branches! {bpl, get_negative, false}
+    branches! {bvc, get_overflow, false}
+    branches! {bvs, get_overflow, true}
 }
 
 #[cfg(test)]
@@ -3033,8 +3026,14 @@ mod tests {
         }
     }
 
+    #[derive(PartialEq, Eq)]
+    enum FlagState {
+        Set,
+        Clear,
+    }
+
     macro_rules! test_branches {
-        ($func_name: ident, $instr_name: expr) => {
+        ($func_name: ident, $instr_name: expr, $flag_state: expr) => {
             #[test]
             fn $func_name() {
                 let mut cpu = CPU {
@@ -3048,17 +3047,18 @@ mod tests {
                 cpu.reset();
                 let mut cpu_copy = cpu.clone();
 
-                let branch_addresses = [0xff, 0x00, 0xAB, 0x98];
+                let branch_addresses = [0xff, 0x10, 0xAB, 0x98];
                 let mut additional_cycles = [0, 0, 0, 0];
 
                 for i in 0..4 {
                     memory.write(2*i, u8::from($instr_name));
                     memory.write(2*i + 1, branch_addresses[i as usize]);
 
-                    additional_cycles[i as usize] = ((2 * i + branch_addresses[i as usize]) > 0xff) as u64;
+                    additional_cycles[i as usize] = ((2 * i + 1 + branch_addresses[i as usize]) > 0xff) as u64;
                 }
 
                 for i in 0..8 {
+                    cpu.pc = 2 * (i / 2);
                     let instruction = cpu.fetch_instruction(&memory);
                     let pc = cpu.pc;
 
@@ -3069,16 +3069,21 @@ mod tests {
 
                     cpu.execute(&mut memory, instruction);
 
-                    cpu_copy.pc = match i % 2 {
-                        0 => pc + 1,
-                        1 => pc + branch_addresses[(i / 2) as usize],
-                        _ => panic!("unreachable"),
+                    let flag_set = match $flag_state {
+                        FlagState::Set => 1,
+                        FlagState::Clear => 0,
                     };
 
-                    cpu_copy.cycles += match i % 2 {
-                        0 => 2,
-                        1 => 3 + additional_cycles[(i / 2) as usize],
-                        _ => panic!("unreachable"),
+                    cpu_copy.pc = if i % 2 == flag_set {
+                        pc + branch_addresses[(i / 2) as usize]
+                    } else {
+                        pc + 1
+                    };
+
+                    cpu_copy.cycles += if i % 2 == flag_set {
+                        3 + additional_cycles[(i / 2) as usize]
+                    } else {
+                        2
                     };
 
                     cpu_copy.set_carry(i % 2 == 1);
@@ -3093,14 +3098,14 @@ mod tests {
         };
     }
 
-    test_branches! {test_bcc, Instruction::BCC}
-    test_branches! {test_bcs, Instruction::BCS}
-    test_branches! {test_beq, Instruction::BEQ}
-    test_branches! {test_bmi, Instruction::BMI}
-    test_branches! {test_bne, Instruction::BNE}
-    test_branches! {test_bpl, Instruction::BPL}
-    test_branches! {test_bvc, Instruction::BVC}
-    test_branches! {test_bvs, Instruction::BVS}
+    test_branches! {test_bcc, Instruction::BCC, FlagState::Clear}
+    test_branches! {test_bcs, Instruction::BCS, FlagState::Set}
+    test_branches! {test_beq, Instruction::BEQ, FlagState::Set}
+    test_branches! {test_bmi, Instruction::BMI, FlagState::Set}
+    test_branches! {test_bne, Instruction::BNE, FlagState::Clear}
+    test_branches! {test_bpl, Instruction::BPL, FlagState::Clear}
+    test_branches! {test_bvc, Instruction::BVC, FlagState::Clear}
+    test_branches! {test_bvs, Instruction::BVS, FlagState::Set}
 
     #[test]
     fn test_bit_zero_page() {
