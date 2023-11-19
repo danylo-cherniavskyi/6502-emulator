@@ -214,6 +214,15 @@ pub enum Instruction {
     BVC,
     BVS,
 
+    // STATUS FLAG CHANGES
+    CLC,
+    CLD,
+    CLI,
+    CLV,
+    SEC,
+    SED,
+    SEI,
+
     INVALID,
 }
 
@@ -400,6 +409,14 @@ impl From<u8> for Instruction {
             0x10 => Instruction::BPL,
             0x50 => Instruction::BVC,
             0x70 => Instruction::BVS,
+            // Status Flag Changes
+            0x18 => Instruction::CLC,
+            0xD8 => Instruction::CLD,
+            0x58 => Instruction::CLI,
+            0xB8 => Instruction::CLV,
+            0x38 => Instruction::SEC,
+            0xF8 => Instruction::SED,
+            0x78 => Instruction::SEI,
 
             _ => Instruction::INVALID,
         }
@@ -585,6 +602,14 @@ impl From<Instruction> for u8 {
             Instruction::BPL => 0x10,
             Instruction::BVC => 0x50,
             Instruction::BVS => 0x70,
+            // Status Flag Changes
+            Instruction::CLC => 0x18,
+            Instruction::CLD => 0xD8,
+            Instruction::CLI => 0x58,
+            Instruction::CLV => 0xB8,
+            Instruction::SEC => 0x38,
+            Instruction::SED => 0xF8,
+            Instruction::SEI => 0x78,
 
             Instruction::INVALID => 0xFF,
         }
@@ -879,6 +904,14 @@ impl CPU {
             Instruction::BPL => self.bpl(memory),
             Instruction::BVC => self.bvc(memory),
             Instruction::BVS => self.bvs(memory),
+            // Status Flag Changes
+            Instruction::CLC => self.clc(memory),
+            Instruction::CLD => self.cld(memory),
+            Instruction::CLI => self.cli(memory),
+            Instruction::CLV => self.clv(memory),
+            Instruction::SEC => self.sec(memory),
+            Instruction::SED => self.sed(memory),
+            Instruction::SEI => self.sei(memory),
 
             Instruction::INVALID => println!("Error: Invalid instruction"),
         }
@@ -1540,6 +1573,36 @@ impl CPU {
     branches! {bpl, get_negative, false}
     branches! {bvc, get_overflow, false}
     branches! {bvs, get_overflow, true}
+}
+
+impl CPU {
+    fn clc(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn cld(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn cli(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn clv(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn sec(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn sed(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn sei(&mut self, memory: &Memory) {
+        todo!();
+    }
 }
 
 #[cfg(test)]
