@@ -3170,6 +3170,60 @@ mod tests {
     test_branches! {test_bvc, Instruction::BVC, FlagState::Clear}
     test_branches! {test_bvs, Instruction::BVS, FlagState::Set}
 
+    enum FlagName {
+        Carry,
+        DecimalMode,
+        InterruptDisable,
+        Overflow,
+    }
+
+    macro_rules! test_status_flag_changes {
+        ($func_name: ident, $instr_name: expr, $flag_name: expr, $flag_state: expr) => {
+            #[test]
+            fn $func_name() {
+                let mut cpu = CPU {
+                    ..Default::default()
+                };
+
+                let mut memory = Memory {
+                    ..Default::default()
+                };
+
+                cpu.reset();
+                let mut cpu_copy = cpu.clone();
+
+                memory.write(0, u8::from($instr_name));
+                let instruction = cpu.fetch_instruction(&memory);
+
+                cpu.execute(&mut memory, instruction);
+
+                cpu_copy.pc = 1;
+                cpu_copy.cycles = 2;
+
+                match ($flag_name, $flag_state) {
+                    (FlagName::Carry, FlagState::Clear) => cpu_copy.set_carry(false),
+                    (FlagName::Carry, FlagState::Set) => cpu_copy.set_carry(true),
+                    (FlagName::DecimalMode, FlagState::Clear) => cpu_copy.set_decimal_mode(false),
+                    (FlagName::DecimalMode, FlagState::Set) => cpu_copy.set_decimal_mode(true),
+                    (FlagName::InterruptDisable, FlagState::Clear) => cpu_copy.set_interrupt_disable(false),
+                    (FlagName::InterruptDisable, FlagState::Set) => cpu_copy.set_interrupt_disable(true),
+                    (FlagName::Overflow, FlagState::Clear) => cpu_copy.set_overflow(false),
+                    _ => panic!("No such instruction"),
+                }
+
+                assert_cpu(&cpu, &cpu_copy);
+            }
+        };
+    }
+
+    test_status_flag_changes! {test_clc, Instruction::CLC, FlagName::Carry, FlagState::Clear}
+    test_status_flag_changes! {test_cld, Instruction::CLD, FlagName::DecimalMode, FlagState::Clear}
+    test_status_flag_changes! {test_cli, Instruction::CLI, FlagName::InterruptDisable, FlagState::Clear}
+    test_status_flag_changes! {test_clv, Instruction::CLV, FlagName::Overflow, FlagState::Clear}
+    test_status_flag_changes! {test_sec, Instruction::SEC, FlagName::Carry, FlagState::Set}
+    test_status_flag_changes! {test_sed, Instruction::SED, FlagName::DecimalMode, FlagState::Set}
+    test_status_flag_changes! {test_sei, Instruction::SEI, FlagName::InterruptDisable, FlagState::Set}
+
     #[test]
     fn test_bit_zero_page() {
         let mut cpu = CPU {
