@@ -223,6 +223,11 @@ pub enum Instruction {
     SED,
     SEI,
 
+    // SYSTEM FUNCTIONS
+    BRK,
+    NOP,
+    RTI,
+
     INVALID,
 }
 
@@ -417,6 +422,10 @@ impl From<u8> for Instruction {
             0x38 => Instruction::SEC,
             0xF8 => Instruction::SED,
             0x78 => Instruction::SEI,
+            // System functions
+            0x00 => Instruction::BRK,
+            0xEA => Instruction::NOP,
+            0x40 => Instruction::RTI,
 
             _ => Instruction::INVALID,
         }
@@ -610,6 +619,10 @@ impl From<Instruction> for u8 {
             Instruction::SEC => 0x38,
             Instruction::SED => 0xF8,
             Instruction::SEI => 0x78,
+            // System functions
+            Instruction::BRK => 0x00,
+            Instruction::NOP => 0xEA,
+            Instruction::RTI => 0x40,
 
             Instruction::INVALID => 0xFF,
         }
@@ -912,6 +925,10 @@ impl CPU {
             Instruction::SEC => self.sec(),
             Instruction::SED => self.sed(),
             Instruction::SEI => self.sei(),
+            // System functions
+            Instruction::BRK => self.brk(memory),
+            Instruction::NOP => self.nop(),
+            Instruction::RTI => self.rti(memory),
 
             Instruction::INVALID => println!("Error: Invalid instruction"),
         }
@@ -1609,6 +1626,20 @@ impl CPU {
     fn sei(&mut self) {
         self.set_interrupt_disable(true);
         self.cycles += 2;
+    }
+}
+
+impl CPU {
+    fn brk(&mut self, memory: &Memory) {
+        todo!();
+    }
+
+    fn nop(&mut self) {
+        todo!();
+    }
+
+    fn rti(&mut self, memory: &Memory) {
+        todo!();
     }
 }
 
