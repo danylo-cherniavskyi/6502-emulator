@@ -3287,6 +3287,55 @@ mod tests {
     }
 
     #[test]
+    fn test_brk() {
+        let mut cpu = CPU {
+            ..Default::default()
+        };
+
+        let mut memory = Memory {
+            ..Default::default()
+        };
+
+        cpu.reset();
+        cpu.sp = 0xff;
+
+        let processor_status = [false, true, false, true, false, true, false];
+        cpu.set_carry(processor_status[0]);
+        cpu.set_zero(processor_status[1]);
+        cpu.set_interrupt_disable(processor_status[2]);
+        cpu.set_decimal_mode(processor_status[3]);
+        cpu.set_break_command(processor_status[4]);
+        cpu.set_overflow(processor_status[5]);
+        cpu.set_negative(processor_status[6]);
+        let mut cpu_copy = cpu.clone();
+
+        let pc_init = 0x1234;
+        let interrupt_addr = 0x4321u16;
+
+        memory.write(pc_init, u8::from(Instruction::BRK));
+        memory.write(0xFFFE, interrupt_addr);
+
+        cpu.pc = pc_init;
+        let instruction = cpu.fetch_instruction(&memory);
+
+        let processor_status = cpu.get_status();
+
+        cpu.execute(&mut memory, instruction);
+
+        cpu_copy.pc = interrupt_addr;
+        cpu_copy.cycles = 7;
+        cpu_copy.set_break_command(true);
+        cpu_copy.sp -= 3;
+
+        assert_cpu(&cpu, &cpu_copy);
+        let status: u8 = memory.read(0x100u16 + cpu.sp as u16 + 1);
+        let pc: u16 = memory.read(0x100u16 + cpu.sp as u16 + 2);
+
+        assert_eq!(status, processor_status);
+        assert_eq!(pc, pc_init + 1);
+    }
+
+    #[test]
     fn test_bit_zero_page() {
         let mut cpu = CPU {
             ..Default::default()
