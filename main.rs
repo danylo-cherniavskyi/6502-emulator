@@ -905,13 +905,13 @@ impl CPU {
             Instruction::BVC => self.bvc(memory),
             Instruction::BVS => self.bvs(memory),
             // Status Flag Changes
-            Instruction::CLC => self.clc(memory),
-            Instruction::CLD => self.cld(memory),
-            Instruction::CLI => self.cli(memory),
-            Instruction::CLV => self.clv(memory),
-            Instruction::SEC => self.sec(memory),
-            Instruction::SED => self.sed(memory),
-            Instruction::SEI => self.sei(memory),
+            Instruction::CLC => self.clc(),
+            Instruction::CLD => self.cld(),
+            Instruction::CLI => self.cli(),
+            Instruction::CLV => self.clv(),
+            Instruction::SEC => self.sec(),
+            Instruction::SED => self.sed(),
+            Instruction::SEI => self.sei(),
 
             Instruction::INVALID => println!("Error: Invalid instruction"),
         }
@@ -1576,32 +1576,39 @@ impl CPU {
 }
 
 impl CPU {
-    fn clc(&mut self, memory: &Memory) {
-        todo!();
+    fn clc(&mut self) {
+        self.set_carry(false);
+        self.cycles += 2;
     }
 
-    fn cld(&mut self, memory: &Memory) {
-        todo!();
+    fn cld(&mut self) {
+        self.set_decimal_mode(false);
+        self.cycles += 2;
     }
 
-    fn cli(&mut self, memory: &Memory) {
-        todo!();
+    fn cli(&mut self) {
+        self.set_interrupt_disable(false);
+        self.cycles += 2;
     }
 
-    fn clv(&mut self, memory: &Memory) {
-        todo!();
+    fn clv(&mut self) {
+        self.set_overflow(false);
+        self.cycles += 2;
     }
 
-    fn sec(&mut self, memory: &Memory) {
-        todo!();
+    fn sec(&mut self) {
+        self.set_carry(true);
+        self.cycles += 2;
     }
 
-    fn sed(&mut self, memory: &Memory) {
-        todo!();
+    fn sed(&mut self) {
+        self.set_decimal_mode(true);
+        self.cycles += 2;
     }
 
-    fn sei(&mut self, memory: &Memory) {
-        todo!();
+    fn sei(&mut self) {
+        self.set_interrupt_disable(true);
+        self.cycles += 2;
     }
 }
 
