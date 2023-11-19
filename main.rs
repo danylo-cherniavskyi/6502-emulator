@@ -1012,7 +1012,7 @@ macro_rules! push_reg {
             let value = self.$reg_name;
             memory.write_byte(0x0100 + self.sp as u16, value);
 
-            self.sp += 1;
+            self.sp -= 1;
             self.cycles += 3;
         }
     };
@@ -1021,7 +1021,7 @@ macro_rules! push_reg {
 macro_rules! pull_reg {
     ($func_name: ident, $reg_name: ident, $test_en: expr) => {
         fn $func_name(&mut self, memory: &mut Memory) {
-            self.sp -= 1;
+            self.sp += 1;
             let value: u8 = memory.read(0x0100 + self.sp as u16);
 
             self.$reg_name = value;
@@ -1935,6 +1935,7 @@ mod tests {
                 };
 
                 cpu.reset();
+                cpu.sp = 0xff;
 
                 let mut cpu_copy = cpu.clone();
 
@@ -1954,12 +1955,12 @@ mod tests {
 
                     cpu.execute(&mut memory, instruction);
 
-                    let actual_value: u8 = memory.read(0x0100 + (cpu.sp - 1) as u16);
+                    let actual_value: u8 = memory.read(0x0100 + (cpu.sp + 1) as u16);
 
                     cpu_copy.cycles = cycles + 3;
                     cpu_copy.pc = pc + 1;
                     cpu_copy.$reg_name = value;
-                    cpu_copy.sp = (i + 1) as u8;
+                    cpu_copy.sp = 0xff - (i + 1) as u8;
                     assert_cpu(&cpu, &cpu_copy);
                     assert_eq!(actual_value, value);
                 }
@@ -1979,6 +1980,7 @@ mod tests {
                 };
 
                 cpu.reset();
+                cpu.sp = 0xff;
 
                 let values = [0u8, 69, (!105u8 + 1)];
 
@@ -2002,7 +2004,7 @@ mod tests {
 
                     cpu_copy.cycles = cycles + 4;
                     cpu_copy.pc = pc + 1;
-                    cpu_copy.sp = sp_init - i as u8 - 1;
+                    cpu_copy.sp = sp_init + i as u8 + 1;
                     cpu_copy.$reg_name = value;
                     if (u8::from(Instruction::PLA) == u8::from($instr_name)) {
                         cpu_copy.set_zero(value == 0);
