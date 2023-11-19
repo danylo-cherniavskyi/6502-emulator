@@ -1461,8 +1461,13 @@ impl CPU {
     jmp! {jmp_absolute, &AddressingMode::Absolute}
     jmp! {jmp_indirect, &AddressingMode::Indirect}
 
-    fn jsr_absolute(&mut self, memory: &Memory) {
-        todo!();
+    fn jsr_absolute(&mut self, memory: &mut Memory) {
+        let pc = self.pc;
+        let dest: u16 = memory.read(self.pc);
+        memory.write(0x100u16 + self.sp as u16, pc + 2 - 1);
+        self.sp -= 2;
+        self.pc = dest;
+        self.cycles += 6;
     }
 
     fn rts_implied(&mut self, memory: &Memory) {
@@ -2901,12 +2906,13 @@ mod tests {
         }
 
         for i in 0..3 {
+            cpu.pc = i * 3;
             let cycles = cpu.cycles;
             let instruction = cpu.fetch_instruction(&memory);
 
             cpu.execute(&mut memory, instruction);
 
-            cpu_copy.pc = addresses[i];
+            cpu_copy.pc = addresses[i as usize];
             cpu_copy.cycles = cycles + 6;
             cpu_copy.sp -= 2;
 
