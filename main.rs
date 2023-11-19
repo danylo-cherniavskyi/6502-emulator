@@ -1471,7 +1471,11 @@ impl CPU {
     }
 
     fn rts_implied(&mut self, memory: &Memory) {
-        todo!();
+        self.sp += 2;
+        let dest: u16 = memory.read(0x100u16 + self.sp as u16);
+        self.pc = dest;
+        self.pc += 1;
+        self.cycles += 6;
     }
 }
 
