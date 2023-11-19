@@ -1650,7 +1650,14 @@ impl CPU {
     }
 
     fn rti(&mut self, memory: &Memory) {
-        todo!();
+        let status: u8 = memory.read(0x100u16 + self.sp as u16 + 1);
+        self.sp += 1;
+        let pc: u16 = memory.read(0x100u16 + self.sp as u16 + 1);
+        self.sp += 2;
+
+        self.status = status;
+        self.pc = pc;
+        self.cycles += 6;
     }
 }
 
@@ -3361,13 +3368,15 @@ mod tests {
         let stack_pc: u16 = 0x1234;
         let stack_processor_status_flags = [false, true, false, true, false, true, false];
         let stack_processor_status = 0b0010_1010u8;
-        let sp: u16 = 0xff - 3;
+        let sp: u8 = 0xff - 3;
 
         memory.write(0, u8::from(Instruction::RTI));
-        memory.write(0x100u16 + sp as u16, stack_processor_status);
-        memory.write(0x100u16 + sp as u16 + 1, stack_pc);
+        memory.write(0x100u16 + sp as u16 + 1, stack_processor_status);
+        memory.write(0x100u16 + sp as u16 + 2, stack_pc);
 
         let instruction = cpu.fetch_instruction(&memory);
+
+        cpu.sp = sp;
 
         cpu.execute(&mut memory, instruction);
 
