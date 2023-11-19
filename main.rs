@@ -2861,6 +2861,80 @@ mod tests {
     test_jmp! {test_jmp_indirect, Instruction::JMP_IN, &AddressingMode::Indirect}
 
     #[test]
+    fn test_jsr() {
+        let mut cpu = CPU {
+            ..Default::default()
+        };
+
+        let mut memory = Memory {
+            ..Default::default()
+        };
+
+        cpu.reset();
+        cpu.sp = 0xff;
+        let mut cpu_copy = cpu.clone();
+
+        let addresses = [0x1234, 0x4321, 0xABCD, 0x6942];
+
+        for i in 0..3 {
+            memory.write(i*3, u8::from(Instruction::JSR_ABS));
+            memory.write(i*3 + 1, addresses[i as usize]);
+        }
+
+        for i in 0..3 {
+            let cycles = cpu.cycles;
+            let instruction = cpu.fetch_instruction(&memory);
+
+            cpu.execute(&mut memory, instruction);
+
+            cpu_copy.pc = addresses[i];
+            cpu_copy.cycles = cycles + 6;
+            cpu_copy.sp -= 2;
+
+            assert_cpu(&cpu, &cpu_copy);
+            let stack_addr: u16 = memory.read(0x100u16 + cpu_copy.sp as u16 + 2);
+            assert_eq!(stack_addr, i as u16 * 3 + 3 - 1, "Address on stack should be {}, but found {}", i as u16 * 3 + 3 - 1, stack_addr);
+        }
+    }
+
+    #[test]
+    fn test_rts() {
+        let mut cpu = CPU {
+            ..Default::default()
+        };
+
+        let mut memory = Memory {
+            ..Default::default()
+        };
+
+        cpu.reset();
+        cpu.sp = 0xff;
+        let mut cpu_copy = cpu.clone();
+
+        let addresses = [0x1234, 0x4321, 0xABCD, 0x6942];
+
+        for i in 0..3 {
+            memory.write(i*3, u8::from(Instruction::JSR_ABS));
+            memory.write(i*3 + 1, addresses[i as usize]);
+            memory.write(addresses[i as usize], u8::from(Instruction::RTS_IM));
+        }
+
+        for i in 0..3 {
+            let cycles = cpu.cycles;
+            let instruction_jsr = cpu.fetch_instruction(&memory);
+            
+            cpu.execute(&mut memory, instruction_jsr);
+            let instruction_rts = cpu.fetch_instruction(&memory);
+            cpu.execute(&mut memory, instruction_rts);
+
+            cpu_copy.pc = 3 * i + 3;
+            cpu_copy.cycles = cycles + 12;
+
+            assert_cpu(&cpu, &cpu_copy);
+        }
+    }
+
+    #[test]
     fn test_bit_zero_page() {
         let mut cpu = CPU {
             ..Default::default()
