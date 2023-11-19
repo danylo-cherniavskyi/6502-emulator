@@ -1436,14 +1436,30 @@ impl CPU {
     shifts! {ror_absolute_x, ror_func, &AddressingMode::AbsoluteReg}
 }
 
-impl CPU {
-    fn jmp_absolute(&mut self, memory: &Memory) {
-        todo!();
-    }
+macro_rules! jmp {
+    ($func_name: ident, $addr_mode: expr) => {
+        fn $func_name(&mut self, memory: &Memory) {
+            use std::collections::HashMap;
+            let mut cycles: HashMap<AddressingMode, u64> = HashMap::new();
+            cycles.insert(AddressingMode::Absolute, 3);
+            cycles.insert(AddressingMode::Indirect, 5);
 
-    fn jmp_indirect(&mut self, memory: &Memory) {
-        todo!();
-    }
+            let instr_param = memory.read(self.pc);
+            let pc_new = match $addr_mode {
+                AddressingMode::Absolute => instr_param,
+                AddressingMode::Indirect => memory.read(instr_param),
+                _ => panic!("Unsupported addressing mode {:?}", $addr_mode),
+            };
+
+            self.pc = pc_new;
+            self.cycles += cycles[$addr_mode];
+        }
+    };
+}
+
+impl CPU {
+    jmp! {jmp_absolute, &AddressingMode::Absolute}
+    jmp! {jmp_indirect, &AddressingMode::Indirect}
 
     fn jsr_absolute(&mut self, memory: &Memory) {
         todo!();
@@ -2843,12 +2859,13 @@ mod tests {
                 }
 
                 for i in 0..3 {
+                    cpu.pc = 3*i;
                     let cycles = cpu.cycles;
                     let instruction = cpu.fetch_instruction(&memory);
 
                     cpu.execute(&mut memory, instruction);
 
-                    cpu_copy.pc = addresses_final[i];
+                    cpu_copy.pc = addresses_final[i as usize];
                     cpu_copy.cycles = cycles + cycles_increments[$addr_mode];
 
                     assert_cpu(&cpu, &cpu_copy);
