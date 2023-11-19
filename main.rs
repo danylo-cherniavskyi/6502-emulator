@@ -1635,7 +1635,7 @@ impl CPU {
     }
 
     fn nop(&mut self) {
-        todo!();
+        self.cycles += 2;
     }
 
     fn rti(&mut self, memory: &Memory) {
