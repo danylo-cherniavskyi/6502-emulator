@@ -3263,6 +3263,30 @@ mod tests {
     test_status_flag_changes! {test_sei, Instruction::SEI, FlagName::InterruptDisable, FlagState::Set}
 
     #[test]
+    fn test_nop() {
+        let mut cpu = CPU {
+            ..Default::default()
+        };
+
+        let mut memory = Memory {
+            ..Default::default()
+        };
+
+        cpu.reset();
+        let mut cpu_copy = cpu.clone();
+
+        memory.write(0, u8::from(Instruction::NOP));
+        let instruction = cpu.fetch_instruction(&memory);
+
+        cpu.execute(&mut memory, instruction);
+
+        cpu_copy.pc = 1;
+        cpu_copy.cycles = 2;
+
+        assert_cpu(&cpu, &cpu_copy);
+    }
+
+    #[test]
     fn test_bit_zero_page() {
         let mut cpu = CPU {
             ..Default::default()
