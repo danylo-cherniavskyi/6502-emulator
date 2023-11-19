@@ -1630,8 +1630,19 @@ impl CPU {
 }
 
 impl CPU {
-    fn brk(&mut self, memory: &Memory) {
-        todo!();
+    fn brk(&mut self, memory: &mut Memory) {
+        let pc = self.pc;
+        let status = self.get_status();
+        memory.write(0x100u16 + self.sp as u16 - 1, pc);
+        self.sp -= 2;
+        memory.write(0x100u16 + self.sp as u16, status);
+        self.sp -= 1;
+
+        self.set_break_command(true);
+
+        let irq_pc: u16 = memory.read(0xfffe);
+        self.pc = irq_pc;
+        self.cycles += 7;
     }
 
     fn nop(&mut self) {
